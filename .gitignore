@@ -163,4 +163,4 @@ cython_debug/
 
 annotated-images/
 README.md
-splits.json
+.DS_Store
