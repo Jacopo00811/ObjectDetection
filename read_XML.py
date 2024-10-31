@@ -22,7 +22,24 @@ def read_images_and_xml(folder_path):
                 # Read XML
                 tree = ET.parse(xml_path)
                 root = tree.getroot()
-                annotations.append(root)
+
+                # Extract annotations
+                img_annotations = []
+                for obj in root.findall('object'):
+                    bndbox = obj.find('bndbox')
+                    xmin = int(bndbox.find('xmin').text)
+                    ymin = int(bndbox.find('ymin').text)
+                    xmax = int(bndbox.find('xmax').text)
+                    ymax = int(bndbox.find('ymax').text)
+
+                    # Calculate width and height
+                    width = xmax - xmin
+                    height = ymax - ymin
+
+                    # Append to annotations list
+                    img_annotations.append([xmin, ymin, width, height])
+                
+                annotations.append(img_annotations)
 
     return images, annotations
 

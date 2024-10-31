@@ -1,4 +1,3 @@
-from turtle import color
 import cv2
 from read_XML import read_images_and_xml
 import os
@@ -52,7 +51,7 @@ def ShowEdgeDetection(image, num_boxes):
     for b in boxes:
         x, y, w, h = b
         color = random_color()
-        cv2.rectangle(img_copy, (x, y), (x + w, y + h), color, 1, cv2.LINE_AA)
+        cv2.rectangle(img_copy, (x, y), (x + w, y + h), color, 2)
     return img_copy
 
 
