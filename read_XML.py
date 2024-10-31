@@ -2,6 +2,9 @@ import os
 import cv2
 import xml.etree.ElementTree as ET
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images')
+
 def read_images_and_xml(folder_path):
     images = []
     annotations = []
@@ -24,9 +27,9 @@ def read_images_and_xml(folder_path):
     return images, annotations
 
 
-def draw_annotations(images, annotations):
+def draw_annotations(images, annotations, image_index=0):
     # Draw annotations on the first image
-    for annotation in annotations[0].findall('object'):
+    for annotation in annotations[image_index].findall('object'):
         name = annotation.find('name').text
         bndbox = annotation.find('bndbox')
         xmin = int(bndbox.find('xmin').text)
@@ -35,14 +38,18 @@ def draw_annotations(images, annotations):
         ymax = int(bndbox.find('ymax').text)
 
         # Draw bounding box
-        cv2.rectangle(images[0], (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        cv2.rectangle(images[image_index], (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
         # Put label
-        cv2.putText(images[0], name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        cv2.putText(images[image_index], name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        
+    # Save the modified image to a file
+    output_path = os.path.join(os.path.dirname(__file__), f"annotated_image_{image_index}.jpg")
+    cv2.imwrite(output_path, images[image_index])
+    print(f"Image saved at {output_path}")
 
-# Find the script directory
-script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Append the current folder path
-folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images')
-images, annotations = read_images_and_xml(folder_path)
+
+# images, annotations = read_images_and_xml(folder_path)
+# print(f"Found {len(images)} images and {len(annotations)} annotations")
+# draw_annotations(images, annotations, image_index=3)
 
