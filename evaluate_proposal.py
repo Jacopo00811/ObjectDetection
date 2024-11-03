@@ -88,12 +88,12 @@ def plot_proposals_for_image(image, gt_boxes, max_num_boxes, mode, iou_threshold
     plt.close()
 
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
-images, annotations = read_images_and_xml(folder_path)
-image_index = 0
-max_num_boxes = 2500
-image = images[image_index]
-gt_boxes = annotations[image_index]
-plot_proposals_for_image(image, gt_boxes, max_num_boxes, mode='quality', iou_threshold=0.5)
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+# images, annotations, names = read_images_and_xml(folder_path)
+# image_index = 0
+# max_num_boxes = 1000
+# image = images[image_index]
+# gt_boxes = annotations[image_index]
+# plot_proposals_for_image(image, gt_boxes, max_num_boxes, mode='quality', iou_threshold=0.6)
 

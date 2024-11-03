@@ -1,12 +1,12 @@
 import cv2
-from read_XML import read_images_and_xml
+from read_XML import draw_annotations, read_images_and_xml
 import os
 import random
 import numpy as np
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images')
-images, annotations = read_images_and_xml(folder_path)
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+# images, annotations, names = read_images_and_xml(folder_path)
 
 def random_color():
     return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
@@ -39,7 +39,7 @@ def EdgeDetection(image, num_boxes, model_path='model/model.yml'):
     edges = edge_detection.detectEdges(np.float32(rgb_im) / 255.0)
     orimap = edge_detection.computeOrientation(edges)
     edges = edge_detection.edgesNms(edges, orimap)
-    edge_boxes = cv2.ximgproc.createEdgeBoxes()
+    edge_boxes = cv2.ximgproc.createEdgeBoxes(alpha=0.9, beta=0.7)
     edge_boxes.setMaxBoxes(num_boxes)
     boxes = edge_boxes.getBoundingBoxes(edges, orimap)
     return boxes
@@ -61,3 +61,4 @@ def ShowEdgeDetection(image, num_boxes):
 # cv2.imwrite(output_path_ss, ShowSelectiveSearch(images[image_index], num_boxes, mode='quality'))
 # output_path_ed = os.path.join(os.path.dirname(__file__), f"ED_image_{image_index}.jpg")
 # cv2.imwrite(output_path_ed, ShowEdgeDetection(images[image_index], num_boxes))
+# draw_annotations(images, annotations, image_index)

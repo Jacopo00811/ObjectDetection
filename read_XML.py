@@ -2,12 +2,13 @@ import os
 import cv2
 import xml.etree.ElementTree as ET
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images')
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
 
 def read_images_and_xml(folder_path):
     images = []
     annotations = []
+    names = []
 
     for filename in os.listdir(folder_path):
         if filename.endswith(".jpg"):
@@ -25,12 +26,14 @@ def read_images_and_xml(folder_path):
 
                 # Extract annotations
                 img_annotations = []
+                name = root.find('filename').text
                 for obj in root.findall('object'):
                     bndbox = obj.find('bndbox')
                     xmin = int(bndbox.find('xmin').text)
                     ymin = int(bndbox.find('ymin').text)
                     xmax = int(bndbox.find('xmax').text)
                     ymax = int(bndbox.find('ymax').text)
+                    # name = obj.find('name').text
 
                     # Calculate width and height
                     width = xmax - xmin
@@ -38,26 +41,23 @@ def read_images_and_xml(folder_path):
 
                     # Append to annotations list
                     img_annotations.append([xmin, ymin, width, height])
-                
+                names.append(name)
                 annotations.append(img_annotations)
 
-    return images, annotations
+    return images, annotations, names
 
 
 def draw_annotations(images, annotations, image_index=0):
     # Draw annotations on the first image
-    for annotation in annotations[image_index].findall('object'):
-        name = annotation.find('name').text
-        bndbox = annotation.find('bndbox')
-        xmin = int(bndbox.find('xmin').text)
-        ymin = int(bndbox.find('ymin').text)
-        xmax = int(bndbox.find('xmax').text)
-        ymax = int(bndbox.find('ymax').text)
+    for annotation in annotations[image_index]:
+        xmin, ymin, width, height = annotation
+        xmax = xmin + width
+        ymax = ymin + height
 
         # Draw bounding box
         cv2.rectangle(images[image_index], (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
         # Put label
-        cv2.putText(images[image_index], name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        # cv2.putText(images[image_index], name, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
         
     # Save the modified image to a file
     output_path = os.path.join(os.path.dirname(__file__), f"annotated_image_{image_index}.jpg")
@@ -66,7 +66,7 @@ def draw_annotations(images, annotations, image_index=0):
 
 
 
-# images, annotations = read_images_and_xml(folder_path)
+# images, annotations, names = read_images_and_xml(folder_path)
 # print(f"Found {len(images)} images and {len(annotations)} annotations")
 # draw_annotations(images, annotations, image_index=3)
 
