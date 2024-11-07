@@ -164,3 +164,4 @@ cython_debug/
 annotated-images/
 README.md
 .DS_Store
+TorchvisionModels/
