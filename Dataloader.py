@@ -37,7 +37,7 @@ class CroppedProposalDataset(Dataset):
             
             if mode == 'test':
                 # No upsampling for test data
-                number = len(self.neg_images)
+                number = len(self.pos_images)
                 self.neg_images = self.neg_images[:number*3]
                 self.images = self.pos_images + self.neg_images
                 self.labels = [1] * len(self.pos_images) + [0] * len(self.neg_images)
@@ -113,54 +113,51 @@ transform = transforms.Compose([
     transforms.RandomAdjustSharpness(2, p=0.5),
 ])
 
-train_dataset = CroppedProposalDataset('train', transform=transform, size=256)
+train_dataset = CroppedProposalDataset('test', transform=transform, size=256)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
 
 
-################################## TESTING ##################################
+################################# TESTING ##################################
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-for batch_idx, (images, labels, xml_dir) in enumerate(train_loader):
-    images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
-    labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
-    xml_dir = xml_dir[0]  # Remove the tuple
+# for batch_idx, (images, labels, xml_dir) in enumerate(train_loader):
+#     images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
+#     labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
+#     xml_dir = xml_dir[0]  # Remove the tuple
 
-    print(f"Batch {batch_idx + 1}:")
-    print(f"  Number of images in batch: {len(images)}")  
-    print(f"  Number of labels in batch: {len(labels)}")
-    print(f"  Labels: {labels}")
-    print(f"  Shape of images: {images.shape}")
-    print(f"  XML file: {xml_dir}")
-    image_name = xml_dir.split('\\')[-1].split('.')[0] + '.jpg'
+#     print(f"Batch {batch_idx + 1}:")
+#     print(f"  Number of images in batch: {len(images)}")  
+#     print(f"  Number of labels in batch: {len(labels)}")
+#     print(f"  Labels: {labels}")
+#     print(f"  Shape of images: {images.shape}")
+#     print(f"  XML file: {xml_dir}")
+#     image_name = xml_dir.split('\\')[-1].split('.')[0] + '.jpg'
 
 
     # print(f"Example image: {images[0]}")
 
     # # Plot images in the first batch
-    if batch_idx == 6:
+    # if batch_idx == 6:
 
-        plt.figure(figsize=(20, 20))
-        for i in range(len(images)):
-            img = images[i].permute(1, 2, 0).cpu().numpy()  # Convert to HWC format for plotting
-            plt.subplot(4, 8, i + 1)
-            plt.imshow(img)
-            plt.axis('off')
+        # plt.figure(figsize=(20, 20))
+        # for i in range(len(images)):
+        #     img = images[i].permute(1, 2, 0).cpu().numpy()  # Convert to HWC format for plotting
+        #     plt.subplot(4, 8, i + 1)
+        #     plt.imshow(img)
+        #     plt.axis('off')
 
-            # Add label text on the image
-            label = labels[i].item()  # Convert label tensor to a scalar
-            plt.text(5, 5, f"Label: {label}", color='white', fontsize=12, ha='left', va='top', backgroundcolor='black')
-        plt.savefig('batch_with_labels.png')
+        #     # Add label text on the image
+        #     label = labels[i].item()  # Convert label tensor to a scalar
+        #     plt.text(5, 5, f"Label: {label}", color='white', fontsize=12, ha='left', va='top', backgroundcolor='black')
+        # plt.savefig('batch_with_labels.png')
         
 
-        print(os.path.join("Potholes", "annotated-images", "train", image_name))
-        image = Image.open(os.path.join("Potholes", "annotated-images", "train", image_name))
-        plt.figure(figsize=(10, 10))
-        plt.imshow(image)
-        plt.axis('off')
-        plt.title("Original Image")
-        plt.savefig('original_image.png')
-        break
-
-
-
+        # print(os.path.join("Potholes", "annotated-images", "train", image_name))
+        # image = Image.open(os.path.join("Potholes", "annotated-images", "train", image_name))
+        # plt.figure(figsize=(10, 10))
+        # plt.imshow(image)
+        # plt.axis('off')
+        # plt.title("Original Image")
+        # plt.savefig('original_image.png')
+        # break
