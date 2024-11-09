@@ -165,3 +165,4 @@ annotated-images/
 README.md
 .DS_Store
 .ipynb
+TorchvisionModels/
