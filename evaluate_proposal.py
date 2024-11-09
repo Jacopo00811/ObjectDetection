@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from read_XML import read_images_and_xml
 import os
 import numpy as np
+import torch
+from torchvision.ops import box_iou
 
 def compute_IoU(box1, box2):
     # box1 and box2 are in the format (x, y, width, height)
@@ -22,6 +24,11 @@ def compute_IoU(box1, box2):
     iou = intersection_area/union_area if union_area > 0 else 0
     return iou
 
+def convert_to_xyxy(boxes):
+    x_min, y_min, width, height = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    x_max, y_max = x_min + width, y_min + height
+    xyxy_boxes = torch.stack((x_min, y_min, x_max, y_max), axis=1)
+    return xyxy_boxes
 
 def compute_recall_and_mabo(pred_boxes, gt_boxes, iou_threshold):
     recall = 0
@@ -31,8 +38,9 @@ def compute_recall_and_mabo(pred_boxes, gt_boxes, iou_threshold):
     for gt_box in gt_boxes:
         best_iou = 0
         for pred_box in pred_boxes:
-            iou = compute_IoU(gt_box, pred_box)
-            best_iou = max(best_iou, iou)
+            # iou = compute_IoU(gt_box, pred_box)
+            iou_torch = box_iou(convert_to_xyxy(torch.tensor([gt_box])), convert_to_xyxy(torch.tensor([pred_box]))).item()
+            best_iou = max(best_iou, iou_torch)
         iou_sum += best_iou
         if best_iou >= iou_threshold:
             matched_boxes += 1
