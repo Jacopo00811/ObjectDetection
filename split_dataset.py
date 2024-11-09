@@ -30,6 +30,6 @@ def split_dataset(json_path, source_folder):
 
 
 # script_dir = os.path.dirname(os.path.abspath(__file__))
-# source_folder = os.path.join(script_dir, 'Potholes', 'annotated-images')
-# json_path = os.path.join(script_dir, 'Potholes', 'splits.json')
+# source_folder = os.path.join(script_dir, 'Temp', 'annotated-images')
+# json_path = os.path.join(script_dir, 'Temp', 'splits.json')
 # split_dataset(json_path, source_folder)
