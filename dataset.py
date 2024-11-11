@@ -113,11 +113,12 @@ transform = transforms.Compose([
     transforms.RandomAdjustSharpness(2, p=0.5),
 ])
 
-train_dataset = CroppedProposalDataset('test', transform=transform, size=256)
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-
 
 ################################# TESTING ##################################
+
+
+# train_dataset = CroppedProposalDataset('test', transform=transform, size=256)
+# train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
 
 # import matplotlib.pyplot as plt
 
