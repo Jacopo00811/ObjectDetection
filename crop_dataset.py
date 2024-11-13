@@ -117,9 +117,9 @@ if __name__ == "__main__":
     images, annotations, names = read_images_and_xml(folder_path)
 
     # Temporarily run on subset
-    images = images[:1]
-    annotations = annotations[:1]
-    names = names[:1]
+    # images = images[:1]
+    # annotations = annotations[:1]
+    # names = names[:1]
 
     save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
 
@@ -128,9 +128,9 @@ if __name__ == "__main__":
     images, annotations, names = read_images_and_xml(folder_path)
 
     # Temporarily run on subset
-    images = images[:1]
-    annotations = annotations[:1]
-    names = names[:1]
+    # images = images[:1]
+    # annotations = annotations[:1]
+    # names = names[:1]
 
     save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
 
@@ -139,9 +139,9 @@ if __name__ == "__main__":
     images, annotations, names = read_images_and_xml(folder_path)
 
     # Temporarily run on subset
-    images = images[:1]
-    annotations = annotations[:1]
-    names = names[:1]
+    # images = images[:1]
+    # annotations = annotations[:1]
+    # names = names[:1]
 
     save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
 
