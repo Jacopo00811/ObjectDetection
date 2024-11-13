@@ -57,7 +57,7 @@ class CroppedProposalDataset(Dataset):
         self.list_of_images = [lst for lst in self.list_of_images if lst]
         self.list_of_labels = [lst for lst in self.list_of_labels if lst]
         self.list_of_xml_dir = [lst for lst in self.list_of_xml_dir if lst]
-
+        
         # Transforms applied before output 
         self.transform =  transforms.Compose([ 
             transforms.Resize((self.size, self.size)),
@@ -98,13 +98,16 @@ class CroppedProposalDataset(Dataset):
         combined = list(zip(image_paths, labels))
         random.shuffle(combined)
         image_paths, labels = zip(*combined)
+        
+        unique_indeces = [int(path.split('/')[-1].split('.')[0].split('_')[2]) for path in image_paths]
+        print(unique_indeces) # TODO: TEST THIS list of lists of 32x5 elemnts xmin ymin xmax ymax
 
         images = [Image.open(image_path).convert("RGB") for image_path in image_paths]
         # Apply the output transformations to each image
         if self.transform:
             images = [self.transform(image) for image in images]
 
-        return torch.stack(images), torch.tensor(labels), xml_dir
+        return torch.stack(images), torch.tensor(labels), xml_dir, torch.tensor(unique_indeces)
 
 transform = transforms.Compose([
     transforms.RandomVerticalFlip(p=0.5),
