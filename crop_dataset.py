@@ -101,16 +101,47 @@ def save_proposals(images, annotations, names, output_dir, num_proposals, iou_th
     print(f"Saved cropped proposals in {output_dir}!")
 
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-folder_path = os.path.join(script_dir, 'Temp', 'annotated-images', 'train')
-images, annotations, names = read_images_and_xml(folder_path)
-
 # # Test on a subset of the data
 # images = images[:1]
 # annotations = annotations[:1]
 # names = names[:1]
-save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
 
-folder_path = os.path.join(script_dir, 'Temp', 'annotated-images', 'test')
-images, annotations, names = read_images_and_xml(folder_path)
-save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
+
+if __name__ == "__main__":
+    # Get the directory of the script
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Read the train images and annotations
+    folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+    images, annotations, names = read_images_and_xml(folder_path)
+
+    # Temporarily run on subset
+    images = images[:1]
+    annotations = annotations[:1]
+    names = names[:1]
+
+    save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
+
+    # Read the validation images and annotations
+    folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'val')
+    images, annotations, names = read_images_and_xml(folder_path)
+
+    # Temporarily run on subset
+    images = images[:1]
+    annotations = annotations[:1]
+    names = names[:1]
+
+    save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
+
+    # Read the test images and annotations
+    folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'test')
+    images, annotations, names = read_images_and_xml(folder_path)
+
+    # Temporarily run on subset
+    images = images[:1]
+    annotations = annotations[:1]
+    names = names[:1]
+
+    save_proposals(images, annotations, names, output_dir=folder_path, num_proposals=1000, iou_threshold=0.6, algorithm='SelectiveSearch')
+

@@ -11,15 +11,24 @@ def split_dataset(json_path, source_folder):
         data = json.load(f)
     
     train_folder = os.path.join(source_folder, 'train')
+    val_folder = os.path.join(source_folder, 'val')
     test_folder = os.path.join(source_folder, 'test')
     os.makedirs(train_folder, exist_ok=True)
+    os.makedirs(val_folder, exist_ok=True)
     os.makedirs(test_folder, exist_ok=True)
 
     # Move files based on JSON list
     for set_type, file_list in data.items():
-        target_folder = train_folder if set_type == 'train' else test_folder
+        target_folder = None
 
-        for xml_file in file_list:
+        if set_type == 'train':
+            target_folder = train_folder
+        elif set_type == 'val':
+            target_folder = val_folder
+        else:
+            target_folder = test_folder
+
+        for xml_file in tqdm(file_list, desc=f"Moving {set_type} files"):
             # Determine paths for XML and corresponding image file
             xml_source = os.path.join(source_folder, xml_file)
             img_source = xml_source.replace(".xml", ".jpg")
@@ -32,10 +41,7 @@ def split_dataset(json_path, source_folder):
 
 
 
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-# source_folder = os.path.join(script_dir, 'Temp', 'annotated-images')
-# json_path = os.path.join(script_dir, 'Temp', 'splits.json')
-# split_dataset(json_path, source_folder)
+
 
 def train_val_split(json_path, source_folder):
 
@@ -81,8 +87,14 @@ def train_val_split(json_path, source_folder):
     print(f"Moved {len(val_images)} images to the validation folder.")
 
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-source_folder = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
-json_path = os.path.join(script_dir, 'Potholes', 'splits.json')
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# source_folder = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+# json_path = os.path.join(script_dir, 'Potholes', 'splits.json')
 
-train_val_split(json_path, source_folder)
+# train_val_split(json_path, source_folder)
+
+if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    source_folder = os.path.join(script_dir, 'Potholes', 'annotated-images')
+    json_path = os.path.join(script_dir, 'Potholes', 'splits.json')
+    split_dataset(json_path, source_folder)
