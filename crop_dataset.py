@@ -89,9 +89,9 @@ def save_proposals(images, annotations, names, output_dir, num_proposals, iou_th
             max_iou = max(compute_IoU(proposal, gt_box) for gt_box in gt_boxes)
             label = 'positive' if max_iou >= iou_threshold else 'background'
             # TODO: Add coordinetaes to the xml file
-            add_object_to_xml(xml_file_path, proposal, f'img-{i+1}_{j}.jpg', label)
+            add_object_to_xml(xml_file_path, proposal, f'img-{names[i]}_{j}.jpg', label)
             save_dir = pos_dir if label == 'positive' else neg_dir
-            cv2.imwrite(os.path.join(save_dir, f'img-{i+1}_{j}.jpg'), crop_img)
+            cv2.imwrite(os.path.join(save_dir, f'img-{names[i]}_{j}.jpg'), crop_img)
         # Free up memory
         img = img_dir + '.jpg'
         xml = img_dir + '.xml'
