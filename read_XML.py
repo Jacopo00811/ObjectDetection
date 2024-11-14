@@ -1,6 +1,7 @@
 import os
 import cv2
 import xml.etree.ElementTree as ET
+import torch
 
 # script_dir = os.path.dirname(os.path.abspath(__file__))
 # folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
@@ -45,6 +46,45 @@ def read_images_and_xml(folder_path):
                 annotations.append(img_annotations)
 
     return images, annotations, names
+
+
+def form_indeces_to_coords(list_of_indeces, xml_dir, labels):
+    """ Returns a matrix of coordinates of 32x6 elemnts: xmin, ymin, xmax, ymax, label, unique, index for each batch of 32 images """
+    
+    coords = torch.zeros(len(list_of_indeces), 6, dtype=torch.int32)
+    image_number = xml_dir.split('/')[-1].split('-')[-1].split('.')[0]
+    # New path after the split of dataset
+    dir = os.path.join(os.path.dirname(xml_dir), f'img-{image_number}', f'img-{image_number}.xml')    
+    tree = ET.parse(dir)
+    root = tree.getroot()
+
+    annotations = []
+    for obj in root.findall('object-proposal'):
+        annotation = {
+            'name': obj.find('name').text,
+            'proposal': obj.find('proposal').text,
+            'pose': obj.find('pose').text,
+            'truncated': int(obj.find('truncated').text),
+            'difficult': int(obj.find('difficult').text),
+            'bndbox': {
+                'xmin': int(obj.find('bndbox/xmin').text),
+                'ymin': int(obj.find('bndbox/ymin').text),
+                'xmax': int(obj.find('bndbox/xmax').text),
+                'ymax': int(obj.find('bndbox/ymax').text)
+            }
+        }
+        annotations.append(annotation)
+    print(annotations)
+    for i, index in enumerate(list_of_indeces):
+        coords[i] = torch.tensor([annotations[index]['bndbox']['xmin'],
+                                  annotations[index]['bndbox']['ymin'],
+                                  annotations[index]['bndbox']['xmax'],
+                                  annotations[index]['bndbox']['ymax'],
+                                  labels[i],
+                                  index], dtype=torch.int
+                                )
+
+    return coords
 
 
 def draw_annotations(images, annotations, image_index=0):

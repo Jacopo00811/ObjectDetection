@@ -83,8 +83,8 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Read the train images and annotations
-    # folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
-    # fix_img_naming(folder_path)
+    folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+    fix_img_naming(folder_path)
 
     # Read the test images and annotations
     folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'test')
