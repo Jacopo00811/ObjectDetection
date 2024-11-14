@@ -38,7 +38,7 @@ def fix_img_naming(folder_path):
 
 
             # set the new proposal name
-            # obj.find('proposal').text = proposal_name
+            obj.find('proposal').text = proposal_name
         
         # write the new xml file
         tree.write(os.path.join(folder_path, dir, xml_file), encoding="utf-8", xml_declaration=True)
