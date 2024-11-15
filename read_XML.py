@@ -48,13 +48,14 @@ def read_images_and_xml(folder_path):
     return images, annotations, names
 
 
-def form_indeces_to_coords(list_of_indeces, xml_dir, labels):
+def from_indeces_to_coords(list_of_indeces, xml_dir, labels):
     """ Returns a matrix of coordinates of 32x6 elemnts: xmin, ymin, xmax, ymax, label, unique, index for each batch of 32 images """
     
     coords = torch.zeros(len(list_of_indeces), 6, dtype=torch.int32)
     image_number = xml_dir.split('/')[-1].split('-')[-1].split('.')[0]
     # New path after the split of dataset
-    dir = os.path.join(os.path.dirname(xml_dir), f'img-{image_number}', f'img-{image_number}.xml')    
+    dir = os.path.join(os.path.dirname(xml_dir), f'img-{image_number}', f'img-{image_number}.xml')   
+    # print("DIr:", dir) 
     tree = ET.parse(dir)
     root = tree.getroot()
 
@@ -74,7 +75,7 @@ def form_indeces_to_coords(list_of_indeces, xml_dir, labels):
             }
         }
         annotations.append(annotation)
-    print(annotations)
+    # print(annotations)
     for i, index in enumerate(list_of_indeces):
         coords[i] = torch.tensor([annotations[index]['bndbox']['xmin'],
                                   annotations[index]['bndbox']['ymin'],

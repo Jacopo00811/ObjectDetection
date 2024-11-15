@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import v2 as transforms
-from read_XML import form_indeces_to_coords
+from read_XML import from_indeces_to_coords
 import os
 from PIL import Image
 import random
@@ -12,6 +12,7 @@ class CroppedProposalDataset(Dataset):
         dir = os.path.join(os.getcwd(), *path_list)
         self.transform = transform
         self.size = size
+        # self.skip = ["img-304", "img-355", "img-592", "img-598"]
         if mode == 'train':
             self.dir = os.path.join(dir, 'train')
         elif mode == 'val':
@@ -95,14 +96,15 @@ class CroppedProposalDataset(Dataset):
         image_paths = self.list_of_images[idx]  # List of paths for proposals
         labels = self.list_of_labels[idx]  # List of corresponding labels
         xml_dir = self.list_of_xml_dir[idx] # .xml file's name
-        
+
         combined = list(zip(image_paths, labels))
         random.shuffle(combined)
         image_paths, labels = zip(*combined)
         # Get the unique indeces for each proposal (index of specific proposal give a certain image)
         unique_indeces = [int(path.split('/')[-1].split('.')[0].split('_')[1]) for path in image_paths]
-        print(unique_indeces)
-        coords = form_indeces_to_coords(unique_indeces, xml_dir, labels)
+        # print(unique_indeces)
+        # print("XML DIR:", xml_dir)
+        coords = from_indeces_to_coords(unique_indeces, xml_dir, labels)
         images = [Image.open(image_path).convert("RGB") for image_path in image_paths]
         
         # Apply the output transformations to each image
@@ -120,29 +122,30 @@ transform = transforms.Compose([
 
 
 ################################# TESTING ##################################
+# /zhome/f9/0/168881/
 
 # dir='/dtu/blackhole/11/168881/ObjectDetection/Potholes/annotated-images'
-train_dataset = CroppedProposalDataset('train', transform=transform, size=256)
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+# train_dataset = CroppedProposalDataset('val', transform=transform, size=256)
+# train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-for batch_idx, (images, labels, xml_dir, coords) in enumerate(train_loader):
-    images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
-    labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
-    xml_dir = xml_dir[0]  # Remove the tuple
+# for batch_idx, (images, labels, xml_dir, coords) in enumerate(train_loader):
+#     images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
+#     labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
+#     xml_dir = xml_dir[0]  # Remove the tuple
+#     # print("XML in batch:", xml_dir)
+#     print(f"Batch {batch_idx + 1}:")
+#     print(f"  Number of images in batch: {len(images)}")  
+#     print(f"  Number of labels in batch: {len(labels)}")
+#     print(f"  Labels: {labels}")
+#     print(f"  Coords: {coords}")
+#     print(f"  Shape of images: {images.shape}")
+#     print(f"  XML file: {xml_dir}")
+#     image_name = xml_dir.split('\\')[-1].split('.')[0] + '.jpg'
+#     print(f"  Image name: {image_name}")
 
-    print(f"Batch {batch_idx + 1}:")
-    print(f"  Number of images in batch: {len(images)}")  
-    print(f"  Number of labels in batch: {len(labels)}")
-    print(f"  Labels: {labels}")
-    print(f"  Coords: {coords}")
-    print(f"  Shape of images: {images.shape}")
-    print(f"  XML file: {xml_dir}")
-    image_name = xml_dir.split('\\')[-1].split('.')[0] + '.jpg'
-    print(f"  Image name: {image_name}")
-
-    print(f"Example image: {images[0]}")
+    # print(f"Example image: {images[0]}")
 
     # Plot images in the first batch
     # if batch_idx == 6:
