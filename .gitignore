@@ -165,3 +165,5 @@ annotated-images/
 README.md
 .DS_Store
 TorchvisionModels/
+
+results/
