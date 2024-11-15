@@ -5,6 +5,37 @@ import torch
 
 # script_dir = os.path.dirname(os.path.abspath(__file__))
 # folder_path = os.path.join(script_dir, 'Potholes', 'annotated-images', 'train')
+def read_xml_gt(xml_dir):
+
+    tree = ET.parse(xml_dir)
+    root = tree.getroot()
+
+    annotations = []
+    for obj in root.findall('object-proposal'):
+        annotation = {
+            'name': obj.find('name').text,
+            'proposal': obj.find('proposal').text,
+            'pose': obj.find('pose').text,
+            'truncated': int(obj.find('truncated').text),
+            'difficult': int(obj.find('difficult').text),
+            'bndbox': {
+                'xmin': int(obj.find('bndbox/xmin').text),
+                'ymin': int(obj.find('bndbox/ymin').text),
+                'xmax': int(obj.find('bndbox/xmax').text),
+                'ymax': int(obj.find('bndbox/ymax').text)
+            }
+        }
+        annotations.append(annotation)
+
+    coords = [[]]
+    for annotation in annotations:
+        coords.append([annotation['bndbox']['xmin'], annotation['bndbox']['ymin'], annotation['bndbox']['xmax'], annotation['bndbox']['ymax']])
+    
+    return torch.tensor(coords)
+
+
+
+
 
 def read_images_and_xml(folder_path):
     images = []
@@ -35,7 +66,6 @@ def read_images_and_xml(folder_path):
                     xmax = int(bndbox.find('xmax').text)
                     ymax = int(bndbox.find('ymax').text)
                     # name = obj.find('name').text
-
                     # Calculate width and height
                     width = xmax - xmin
                     height = ymax - ymin

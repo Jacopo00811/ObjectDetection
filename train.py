@@ -18,7 +18,7 @@ import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
 from torchvision.ops import nms
 
-from read_XML import read_images_and_xml
+from read_XML import read_images_and_xml, read_xml_gt
 
 def create_tqdm_bar(iterable, desc):
     return tqdm(enumerate(iterable), total=len(iterable), ncols=150, desc=desc)
@@ -59,18 +59,23 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
             images = images.to(device)
 
             # Forward pass, backward pass and optimizer step
-            predicted_labels = model(images)
-            loss_train = loss_function(labels, predicted_labels)
+            predicted_labels = model(images).squeeze(1)# [:,1]
+            # predicted_labels = F.softmax(predicted_labels, dim=1).max(1)[1]
+            # print("Shape of predicted labels:", predicted_labels.shape)
+
+            loss_train = loss_function(labels.float(), predicted_labels)
             loss_train.backward()
             optimizer.step()
-
             # Accumulate the loss and calculate the accuracy of predictions
             training_loss += loss_train.item()
             train_losses.append(loss_train.item())
 
             # Running train accuracy
-            _, predicted = predicted_labels.max(1)
-            num_correct = (predicted == labels).sum()
+            predicted_labels = F.sigmoid(predicted_labels)
+            predicted_labels = (predicted_labels > 0.5).int()
+
+            # _, predicted = predicted_labels.max(1)
+            num_correct = (predicted_labels == labels).sum()
             train_accuracy = float(num_correct)/float(images.shape[0])
             accuracies.append(train_accuracy)
 
@@ -100,10 +105,10 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
                 labels = labels.to(device)
 
                 # Forward pass
-                output = model(images)
-
+                output = model(images).squeeze(1)
+                # TODO:
                 # Calculate the loss
-                loss_val = loss_function(labels, output)
+                loss_val = loss_function(labels.float(), output)
 
                 validation_loss += loss_val.item()
                 val_losses.append(loss_val.item())
@@ -143,7 +148,7 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
     
     
     # Check accuracy and save model
-    accuracy = check_accuracy(model, dataloader_test, device, hyper_parameters['batch size'])
+    accuracy = check_accuracy(model, dataloader_test, device)
     save_dir = os.path.join(directory, f'accuracy_{accuracy:.3f}.pth')
     torch.save(model.state_dict(), save_dir)
 
@@ -187,39 +192,43 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
             xml_dir = xml_dir[0]  # Remove the tuple
 
-            _, ground_truth_boxes, _ = read_images_and_xml(xml_dir)
-            ground_truth_boxes = convert_to_xyxy(ground_truth_boxes)
+            ground_truth_boxes = read_xml_gt(xml_dir)
             all_ground_truths.extend(ground_truth_boxes)
 
-            image = image.to(device)
-            label = label.to(device)
+            images = images.to(device)
+            labels = labels.to(device)
 
             # TODO: IMPLEMENT HERE THE TEST TIME PROCEDURE
 
-            scores = model(image)
+            scores = model(images).squeeze()   
+            prob = F.softmax(scores, dim=1)
+            mask = (prob > 0.5).int()
 
-            scores = F.softmax(scores, dim=1)
-
+            selected_coords = coords[mask == 1]
+            # scores = F.softmax(scores, dim=1)
+            scores = scores[mask == 1]
             # Apply NMS:
-            scores = scores.squeeze()
-            scores = scores[:, 1]  # Get the positive class scores
-            keep = nms(coords[:,:4], scores, iou_threshold=hyperparameters['iou_threshold'])
+            
+            boxes = selected_coords[:, :4].to(device).squeeze().transpose(0, 1)
+            print("Boxes shape:", boxes.shape)
+            print(boxes)
+            keep = nms(boxes, scores, iou_threshold=hyperparameters['iou_threshold'])
             all_predictions.extend(scores[keep].cpu().numpy())
 
             _, predictions = scores.max(1)
-            num_correct += (predictions == label).sum().item()
+            num_correct += (predictions == labels).sum().item()
             num_samples += predictions.size(0)
             
             # Save predictions and labels
             y_pred.extend(predictions.cpu().tolist())
-            y_true.extend(label.cpu().tolist())
+            y_true.extend(labels.cpu().tolist())
 
 
             # Find misclassified examples
-            misclassified_mask = predictions != label
+            misclassified_mask = predictions != labels
             if misclassified_mask.any():
-                misclassified_images = image[misclassified_mask].cpu()
-                misclassified_labels = label[misclassified_mask].cpu().numpy()
+                misclassified_images = images[misclassified_mask].cpu()
+                misclassified_labels = labels[misclassified_mask].cpu().numpy()
                 misclassified_predictions = predictions[misclassified_mask].cpu().numpy()
 
                 # Append only misclassified examples
@@ -305,7 +314,7 @@ hyperparameters = {
     'gamma': 0.9, 
     'momentum': 0.9, 
     'optimizer': 'Adam', 
-    'number of classes': 2, 
+    'number of classes': 1, 
     'device': 'cuda', 
     'image size': 256, 
     'backbone': 'mobilenet_v3_large', # "mobilenet_v3_large" or "resnet152" 
@@ -320,11 +329,11 @@ hyperparameters = {
     'iou_threshold': 0.5
 }
 
-loss_function = torch.nn.BCELoss()
+loss_function = torch.nn.BCEWithLogitsLoss()
 
 train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
 print(f"Created a new Dataset for training of length: {len(train_dataset)}")
-val_dataset = CroppedProposalDataset('val', transform=None, size=hyperparameters['image size'])
+val_dataset = CroppedProposalDataset('val', transform=transform, size=hyperparameters['image size'])
 print(f"Created a new Dataset for validation of length: {len(val_dataset)}")
 test_dataset = CroppedProposalDataset('test', transform=None, size=hyperparameters['image size'])
 print(f"Created a new Dataset for testing of length: {len(test_dataset)}")
@@ -333,7 +342,7 @@ models_folder_path = os.path.join(script_dir, 'TorchvisionModels')
 os.environ['TORCH_HOME'] = models_folder_path
 os.makedirs(models_folder_path, exist_ok=True)
 model = MultiModel(backbone=hyperparameters['backbone'], hyperparameters=hyperparameters, load_pretrained=True).to(device)
-summary(model, (3, hyperparameters['image size'], hyperparameters['image size']))
+# summary(model, (3, hyperparameters['image size'], hyperparameters['image size']))
 # model.count_parameters()
 
 run_dir = "Results"
