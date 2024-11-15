@@ -1,7 +1,7 @@
 import os
 from torchmetrics import AveragePrecision
 from tqdm import tqdm
-from dataset import CroppedProposalDataset
+# from dataset import CroppedProposalDataset
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -58,94 +58,98 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
 
             # Forward pass, backward pass and optimizer step
             predicted_labels = model(images)
-            loss_train = loss_function(labels, predicted_labels)
-            loss_train.backward()
-            optimizer.step()
+            print(predicted_labels)
+            break
+    #         loss_train = loss_function(labels, predicted_labels)
+    #         loss_train.backward()
+    #         optimizer.step()
 
-            # Accumulate the loss and calculate the accuracy of predictions
-            training_loss += loss_train.item()
-            train_losses.append(loss_train.item())
+    #         # Accumulate the loss and calculate the accuracy of predictions
+    #         training_loss += loss_train.item()
+    #         train_losses.append(loss_train.item())
 
-            # Running train accuracy
-            _, predicted = predicted_labels.max(1)
-            num_correct = (predicted == labels).sum()
-            train_accuracy = float(num_correct)/float(images.shape[0])
-            accuracies.append(train_accuracy)
+    #         # Running train accuracy
+    #         _, predicted = predicted_labels.max(1)
+    #         num_correct = (predicted == labels).sum()
+    #         train_accuracy = float(num_correct)/float(images.shape[0])
+    #         accuracies.append(train_accuracy)
 
-            training_loop.set_postfix(train_loss="{:.8f}".format(
-                training_loss / (train_iteration + 1)), val_loss="{:.8f}".format(validation_loss))
+    #         training_loop.set_postfix(train_loss="{:.8f}".format(
+    #             training_loss / (train_iteration + 1)), val_loss="{:.8f}".format(validation_loss))
 
-            logger.add_scalar(f'Train loss', loss_train.item(
-            ), epoch*len(dataloader_train)+train_iteration)
-            logger.add_scalar(f'Train accuracy', train_accuracy, epoch*len(dataloader_train)+train_iteration)
-        all_train_losses.append(sum(train_losses)/len(train_losses))
-        all_accuracies.append(sum(accuracies)/len(accuracies)) 
+    #         logger.add_scalar(f'Train loss', loss_train.item(
+    #         ), epoch*len(dataloader_train)+train_iteration)
+    #         logger.add_scalar(f'Train accuracy', train_accuracy, epoch*len(dataloader_train)+train_iteration)
+    #     all_train_losses.append(sum(train_losses)/len(train_losses))
+    #     all_accuracies.append(sum(accuracies)/len(accuracies)) 
 
-        """    Validation step for one batch of data    """
-        val_loop = create_tqdm_bar(
-            dataloader_validation, desc=f'Validation Epoch [{epoch+1}/{epochs}]')
-        validation_loss = 0
-        val_losses = []
-        model.eval()  # Set the model to evaluation mode
-        with torch.no_grad():
-            for val_iteration, batch in val_loop:
-                images, labels, xml_dir = batch
-                images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
-                labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
-                xml_dir = xml_dir[0]  # Remove the tuple
+    #     """    Validation step for one batch of data    """
+    #     val_loop = create_tqdm_bar(
+    #         dataloader_validation, desc=f'Validation Epoch [{epoch+1}/{epochs}]')
+    #     validation_loss = 0
+    #     val_losses = []
+    #     model.eval()  # Set the model to evaluation mode
+    #     with torch.no_grad():
+    #         for val_iteration, batch in val_loop:
+    #             images, labels, xml_dir = batch
+    #             images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
+    #             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
+    #             xml_dir = xml_dir[0]  # Remove the tuple
                     
-                images = images.to(device)
-                labels = labels.to(device)
+    #             images = images.to(device)
+    #             labels = labels.to(device)
 
-                # Forward pass
-                output = model(images)
+    #             # Forward pass
+    #             output = model(images)
 
-                # Calculate the loss
-                loss_val = loss_function(labels, output)
+    #             # Calculate the loss
+    #             loss_val = loss_function(labels, output)
 
-                validation_loss += loss_val.item()
-                val_losses.append(loss_val.item())
+    #             validation_loss += loss_val.item()
+    #             val_losses.append(loss_val.item())
 
-                val_loop.set_postfix(val_loss="{:.8f}".format(
-                    validation_loss/(val_iteration+1)))
+    #             val_loop.set_postfix(val_loss="{:.8f}".format(
+    #                 validation_loss/(val_iteration+1)))
                 
-                # Update the tensorboard logger.
-                logger.add_scalar(f'Validation loss', validation_loss/(
-                    val_iteration+1), epoch*len(dataloader_validation)+val_iteration)
-                # If you want to log the validation accuracy, you can do it here.
-            all_val_losses.append(sum(val_losses)/len(val_losses))
+    #             # Update the tensorboard logger.
+    #             logger.add_scalar(f'Validation loss', validation_loss/(
+    #                 val_iteration+1), epoch*len(dataloader_validation)+val_iteration)
+    #             # If you want to log the validation accuracy, you can do it here.
+    #         all_val_losses.append(sum(val_losses)/len(val_losses))
 
-        # This value is for the progress bar of the training loop.
-        validation_loss /= len(dataloader_validation)
+    #     # This value is for the progress bar of the training loop.
+    #     validation_loss /= len(dataloader_validation)
 
-        logger.add_scalars(f'Combined', {'Validation loss': validation_loss,
-                                                 'Train loss': training_loss/len(dataloader_train)}, epoch)
-        if scheduler is not None:
-            scheduler.step()
-            print(f"Current learning rate: {scheduler.get_last_lr()}")
+    #     logger.add_scalars(f'Combined', {'Validation loss': validation_loss,
+    #                                              'Train loss': training_loss/len(dataloader_train)}, epoch)
+    #     if scheduler is not None:
+    #         scheduler.step()
+    #         print(f"Current learning rate: {scheduler.get_last_lr()}")
 
-    if scheduler is not None:
-        logger.add_hparams(
-            {f"Step_size": scheduler.step_size, f'Batch_size': 32, f'Optimizer': hyper_parameters["optimizer"], f'Scheduler': hyper_parameters["scheduler"]},
-            {f'Avg train loss': sum(all_train_losses)/len(all_train_losses),
-                f'Avg accuracy': sum(all_accuracies)/len(all_accuracies),
-                f'Avg val loss': sum(all_val_losses)/len(all_val_losses)}
-        )
-    else:
-        logger.add_hparams(
-            {f"Step_size": "None", f'Batch_size': 32, f'Optimizer': hyper_parameters["optimizer"], f'Scheduler': hyper_parameters["scheduler"]},
-            {f'Avg train loss': sum(all_train_losses)/len(all_train_losses),
-                f'Avg accuracy': sum(all_accuracies)/len(all_accuracies),
-                f'Avg val loss': sum(all_val_losses)/len(all_val_losses)}
-        )
+    # if scheduler is not None:
+    #     logger.add_hparams(
+    #         {f"Step_size": scheduler.step_size, f'Batch_size': 32, f'Optimizer': hyper_parameters["optimizer"], f'Scheduler': hyper_parameters["scheduler"]},
+    #         {f'Avg train loss': sum(all_train_losses)/len(all_train_losses),
+    #             f'Avg accuracy': sum(all_accuracies)/len(all_accuracies),
+    #             f'Avg val loss': sum(all_val_losses)/len(all_val_losses)}
+    #     )
+    # else:
+    #     logger.add_hparams(
+    #         {f"Step_size": "None", f'Batch_size': 32, f'Optimizer': hyper_parameters["optimizer"], f'Scheduler': hyper_parameters["scheduler"]},
+    #         {f'Avg train loss': sum(all_train_losses)/len(all_train_losses),
+    #             f'Avg accuracy': sum(all_accuracies)/len(all_accuracies),
+    #             f'Avg val loss': sum(all_val_losses)/len(all_val_losses)}
+    #     )
     
     
-    # Check accuracy and save model
-    accuracy = check_accuracy(model, dataloader_test, device, hyper_parameters['batch size'])
-    save_dir = os.path.join(directory, f'accuracy_{accuracy:.3f}.pth')
-    torch.save(model.state_dict(), save_dir)
+    # # Check accuracy and save model
+    # accuracy = check_accuracy(model, dataloader_test, device, hyper_parameters['batch size'])
+    # save_dir = os.path.join(directory, f'accuracy_{accuracy:.3f}.pth')
+    # torch.save(model.state_dict(), save_dir)
 
-    return accuracy
+    # return accuracy
+    return None
+
 
 def set_optimizer_and_scheduler(new_hp, model):
     if new_hp["optimizer"] == "Adam":
@@ -192,23 +196,17 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             # TODO: IMPLEMENT HERE THE TEST TIME PROCEDURE
 
             scores = model(image)
-            predicted_boxes = scores[..., :4] # I think this is the correct way to get the boxes
-            confidence_scores = scores[..., 4:] # I think this is the correct way to get the scores
+            
+
+            # Read XML to get bbs with og coords
+
+
 
             # Read ground truth boxes from XML
-            _, ground_truth_boxes, _ = read_images_and_xml(xml_dir)
+            _, ground_truth_boxes, _ = read_images_and_xml(xml_dir) # matrix 32x4 gt boxes
 
             # Convert scores to binary predictions
             scores = F.softmax(scores, dim=1)
-
-            # Calculate IoU between predicted and ground truth boxes
-            # This is what I had
-            for gt_box in ground_truth_boxes[0]:
-                best_iou = 0
-                for pred_box in scores:
-                    iou_torch = box_iou(convert_to_xyxy(torch.tensor([gt_box])), convert_to_xyxy(torch.tensor([pred_box]))).item()
-                    best_iou = max(best_iou, iou_torch)
-                gt_scores.append(best_iou)
 
             # Apply NMS to remove overlapping boxes
 
@@ -218,8 +216,6 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
             all_predictions.extend(zip(filtered_boxes, filtered_scores))
             all_ground_truths.extend(ground_truth_boxes[0])
-
-            # I asked chat for advice 
 
             # IoU Calculations for Evaluation
             for gt_box in ground_truth_boxes:
@@ -255,7 +251,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
         ap_score.update(torch.tensor(all_predictions), torch.tensor(all_ground_truths))
         
         ap_score = ap_score.compute()
-        print(f"Average Precision: {ap_score}")
+        print(f"Average Precision: {ap_score}") # I'm assuming this isnt supposed to be here 
 
     accuracy = float(num_correct)/float(num_samples)
     print(f"Got {num_correct}/{num_samples} with accuracy {accuracy * 100:.3f}%")
@@ -349,12 +345,12 @@ hyperparameters = {
 
 loss_function = torch.nn.BCELoss()
 
-train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
-print(f"Created a new Dataset for training of length: {len(train_dataset)}")
-val_dataset = CroppedProposalDataset('val', transform=None, size=hyperparameters['image size'])
-print(f"Created a new Dataset for validation of length: {len(val_dataset)}")
-test_dataset = CroppedProposalDataset('test', transform=None, size=hyperparameters['image size'])
-print(f"Created a new Dataset for testing of length: {len(test_dataset)}")
+# train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
+# print(f"Created a new Dataset for training of length: {len(train_dataset)}")
+# val_dataset = CroppedProposalDataset('val', transform=None, size=hyperparameters['image size'])
+# print(f"Created a new Dataset for validation of length: {len(val_dataset)}")
+# test_dataset = CroppedProposalDataset('test', transform=None, size=hyperparameters['image size'])
+# print(f"Created a new Dataset for testing of length: {len(test_dataset)}")
 
 models_folder_path = os.path.join(script_dir, 'TorchvisionModels')
 os.environ['TORCH_HOME'] = models_folder_path
@@ -369,18 +365,26 @@ modeltype = hyperparameters['backbone']
 modeltype_directory = os.path.join(run_dir, f'{modeltype}')
 os.makedirs(modeltype_directory, exist_ok=True)
 
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for training")
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for validation")
-test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for testing")
+# train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+# print("Created a new Dataloader for training")
+# val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+# print("Created a new Dataloader for validation")
+# test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+# print("Created a new Dataloader for testing")
 
 log_dir = os.path.join(modeltype_directory, f'{hyperparameters["network name"]}_{hyperparameters["optimizer"]}_Scheduler_{hyperparameters["scheduler"]}')
 os.makedirs(log_dir, exist_ok=True)
 logger = SummaryWriter(log_dir)
 
-accuracy = train_net(model, logger, hyperparameters, device,
-                             loss_function, train_loader, val_loader, test_loader, modeltype_directory)
-print(f"Final accuracy: {accuracy}")
+x = torch.rand(32, 3, 256, 256).to(device)
+model = model.to(device)
+scores = model(x)
+scores = F.softmax(scores, dim=1)
+
+print(scores[:,0])
+print(f"Scores shape: {scores.shape}")
+
+# accuracy = train_net(model, logger, hyperparameters, device,
+#                              loss_function, train_loader, val_loader, test_loader, modeltype_directory)
+# print(f"Final accuracy: {accuracy}")
 
