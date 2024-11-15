@@ -1,4 +1,5 @@
 import os
+from torchmetrics import AveragePrecision
 from tqdm import tqdm
 from dataset import CroppedProposalDataset
 import torch
@@ -7,6 +8,7 @@ from torch.utils.data import DataLoader
 import torchvision.transforms.v2 as transforms
 from torchsummary import summary
 from torch.utils.tensorboard.writer import SummaryWriter
+from evaluate_proposal import convert_to_xyxy
 from model import MultiModel
 import matplotlib.pyplot as plt
 import seaborn as sn
@@ -14,6 +16,9 @@ import pandas as pd
 import numpy as np
 import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
+from torchvision.ops import nms
+
+from read_XML import read_images_and_xml
 
 def create_tqdm_bar(iterable, desc):
     return tqdm(enumerate(iterable), total=len(iterable), ncols=150, desc=desc)
@@ -43,7 +48,9 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
         for train_iteration, batch in training_loop:
             optimizer.zero_grad()  # Reset the parameter gradients for the current minibatch iteration
 
-            images, labels, xml_dir = batch
+
+            # coords(xmin, ymin, xmax, ymax, label, index)
+            images, labels, xml_dir, _ = batch 
             images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
             xml_dir = xml_dir[0]  # Remove the tuple
@@ -84,7 +91,7 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
         model.eval()  # Set the model to evaluation mode
         with torch.no_grad():
             for val_iteration, batch in val_loop:
-                images, labels, xml_dir = batch
+                images, labels, xml_dir, coords = batch
                 images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
                 labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
                 xml_dir = xml_dir[0]  # Remove the tuple
@@ -169,13 +176,20 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     y_true = []
     y_pred = []
     misclassified = []
+    all_predictions = []
+    all_ground_truths = []
 
     with torch.no_grad():
         for data in dataloader:
-            images, labels, xml_dir = data 
+            # coords(xmin, ymin, xmax, ymax, SS_label, index)
+            images, labels, xml_dir, coords = data 
             images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
             xml_dir = xml_dir[0]  # Remove the tuple
+
+            _, ground_truth_boxes, _ = read_images_and_xml(xml_dir)
+            ground_truth_boxes = convert_to_xyxy(ground_truth_boxes)
+            all_ground_truths.extend(ground_truth_boxes)
 
             image = image.to(device)
             label = label.to(device)
@@ -184,6 +198,14 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
             scores = model(image)
 
+            scores = F.softmax(scores, dim=1)
+
+            # Apply NMS:
+            scores = scores.squeeze()
+            scores = scores[:, 1]  # Get the positive class scores
+            keep = nms(coords[:,:4], scores, iou_threshold=hyperparameters['iou_threshold'])
+            all_predictions.extend(scores[keep].cpu().numpy())
+
             _, predictions = scores.max(1)
             num_correct += (predictions == label).sum().item()
             num_samples += predictions.size(0)
@@ -191,6 +213,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             # Save predictions and labels
             y_pred.extend(predictions.cpu().tolist())
             y_true.extend(label.cpu().tolist())
+
 
             # Find misclassified examples
             misclassified_mask = predictions != label
@@ -202,10 +225,14 @@ def check_accuracy(model, dataloader, device, save_dir=None):
                 # Append only misclassified examples
                 misclassified.extend(
                     zip(misclassified_images, misclassified_labels, misclassified_predictions))
-
+                
+    avg_precision = AveragePrecision(task='binary')
+    avg_precision.update(torch.tensor(all_predictions), torch.tensor(all_ground_truths))
+    results = avg_precision.compute()
+    print(f"Average Precision: {results}")
     accuracy = float(num_correct)/float(num_samples)
     print(f"Got {num_correct}/{num_samples} with accuracy {accuracy * 100:.3f}%")
-    classes = ('Positive', 'Background') # TODO: CHECK IF THIS IS CORRECT
+    classes = ('Background', 'Positive') # TODO: CHECK IF THIS IS CORRECT
 
     # Create confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
@@ -274,7 +301,7 @@ transform = transforms.Compose([
 hyperparameters = {
     'step size': 5, 
     'learning rate': 0.0001, 
-    'epochs': 100, 
+    'epochs': 1, 
     'gamma': 0.9, 
     'momentum': 0.9, 
     'optimizer': 'Adam', 
@@ -289,7 +316,8 @@ hyperparameters = {
     'epsilon': 1e-08, 
     'number of workers': 3, 
     'weight decay': 0.0005, 
-    'scheduler': 'Yes'
+    'scheduler': 'Yes',
+    'iou_threshold': 0.5
 }
 
 loss_function = torch.nn.BCELoss()
