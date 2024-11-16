@@ -33,7 +33,39 @@ def read_xml_gt(xml_dir):
     
     return torch.tensor(coords)
 
+def read_xml_gt_og(xml_dir):
+    tree = ET.parse(xml_dir)
+    root = tree.getroot()
 
+    annotations = []
+    for obj in root.findall('object'):
+        annotation = {
+            'name': obj.find('name').text,
+            'pose': obj.find('pose').text,
+            'truncated': int(obj.find('truncated').text),
+            'difficult': int(obj.find('difficult').text),
+            'bndbox': {
+                'xmin': int(obj.find('bndbox/xmin').text),
+                'ymin': int(obj.find('bndbox/ymin').text),
+                'xmax': int(obj.find('bndbox/xmax').text),
+                'ymax': int(obj.find('bndbox/ymax').text)
+            }
+        }
+
+        annotations.append(annotation)
+
+    coords = []
+    for annotation in annotations:
+        # print(f'here')
+        coords.append([annotation['bndbox']['xmin'], 
+                       annotation['bndbox']['ymin'], 
+                       annotation['bndbox']['xmax'], 
+                       annotation['bndbox']['ymax']])
+    
+    coords = torch.tensor(coords)    
+    coords = coords.squeeze()
+    
+    return coords
 
 
 
@@ -141,3 +173,11 @@ def draw_annotations(images, annotations, image_index=0):
 # print(f"Found {len(images)} images and {len(annotations)} annotations")
 # draw_annotations(images, annotations, image_index=3)
 
+if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    xml_path = "Potholes/annotated-images/train/img-665.xml"
+    full_path = os.path.join(script_dir, xml_path)
+
+    coords = read_xml_gt_og(full_path)
+    print(coords)
+    

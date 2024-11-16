@@ -18,7 +18,7 @@ import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
 from torchvision.ops import nms
  
-from read_XML import read_images_and_xml, read_xml_gt
+from read_XML import read_images_and_xml, read_xml_gt_og
  
 def create_tqdm_bar(iterable, desc):
     return tqdm(enumerate(iterable), total=len(iterable), ncols=150, desc=desc)
@@ -215,9 +215,14 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
             xml_dir = xml_dir[0]  # Remove the tuple
- 
-            ground_truth_boxes = read_xml_gt(xml_dir)
+
+            ground_truth_boxes = read_xml_gt_og(xml_dir)
+
+
+
+
             all_ground_truths.extend(ground_truth_boxes)
+
  
             images = images.to(device)
             labels = labels.to(device)
@@ -228,42 +233,47 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             scores = model(images)#.squeeze()  
             labels = labels.unsqueeze(dim=1)
 
-            if labels.shape != (24, 1) or scores.shape != (24, 1):
-                    print(f"Breaking loop because one of the tensors has an incorrect shape. "
-                    f"labels shape: {labels.shape}, scores shape: {scores.shape}")
-                    break  # Exit the loop if shapes are not as expected
-            else:
-                labels = labels.float()
-                scores = F.sigmoid(scores)
+          
+            labels = labels.float()
+            scores = F.sigmoid(scores)  
+            
 
             # mask = (scores > 0.5).int()
 
-            # Check shape of scores
-            print(f"Scores shape: {scores.shape}\n scores: {scores.cpu().numpy()}")
-            print(f"Coords shape: {coords.shape}\n Coords: {coords.cpu().numpy()}")
+
 
 
             if scores is not None and scores.numel() > 0:
                 mask = (scores > 0.5).int()
-                print(f"Mask shape: {mask.shape}\n Mask: {mask.cpu().numpy()}")
+                # print(f"Mask shape: {mask.shape}\n Mask: {mask.cpu().numpy()}")
             else:
-                print("Scores tensor is invalid or empty.")
+                # print("Scores tensor is invalid or empty.")
                 continue  # Skip this iteration if mask creation fails
 
             # mask = (scores > 0.5).int()
- 
+
+            mask = mask.squeeze(1)
+            coords = coords.squeeze(0)
+
+
             selected_coords = coords[mask == 1]
             # scores = F.softmax(scores, dim=1)
-            scores = scores[mask == 1]
+            pos_scores = scores[mask == 1]
+
             # Apply NMS:
            
-            boxes = selected_coords[:, :4].to(device).squeeze().transpose(0, 1)
-            print("Boxes shape:", boxes.shape)
-            print(boxes)
-            keep = nms(boxes, scores, iou_threshold=hyperparameters['iou_threshold'])
-            all_predictions.extend(scores[keep].cpu().numpy())
- 
-            _, predictions = scores.max(1)
+            boxes = selected_coords[:, :4].to(device).squeeze().float()
+
+
+
+            keep = nms(boxes, pos_scores.squeeze(), iou_threshold=hyperparameters['iou_threshold'])
+            all_predictions.extend(pos_scores[keep].cpu().numpy())
+
+
+            # Calculating validation metric stuff ...
+
+            predictions = (scores.squeeze() > 0.5).int()
+
             num_correct += (predictions == labels).sum().item()
             num_samples += predictions.size(0)
            
@@ -273,17 +283,19 @@ def check_accuracy(model, dataloader, device, save_dir=None):
  
  
             # Find misclassified examples
-            misclassified_mask = predictions != labels
-            if misclassified_mask.any():
-                misclassified_images = images[misclassified_mask].cpu()
-                misclassified_labels = labels[misclassified_mask].cpu().numpy()
-                misclassified_predictions = predictions[misclassified_mask].cpu().numpy()
+            # misclassified_mask = predictions != labels
+            # if misclassified_mask.any():
+            #    misclassified_images = images[misclassified_mask].cpu()
+            #    misclassified_labels = labels[misclassified_mask].cpu().numpy()
+            #    misclassified_predictions = predictions[misclassified_mask].cpu().numpy()
  
                 # Append only misclassified examples
-                misclassified.extend(
-                    zip(misclassified_images, misclassified_labels, misclassified_predictions))
+            #    misclassified.extend(
+            #        zip(misclassified_images, misclassified_labels, misclassified_predictions))
                
     avg_precision = AveragePrecision(task='binary')
+
+    print(f"Ground truths: {all_ground_truths}")
     avg_precision.update(torch.tensor(all_predictions), torch.tensor(all_ground_truths))
     results = avg_precision.compute()
     print(f"Average Precision: {results}")
@@ -308,7 +320,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
         plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'))
         plt.close()
  
-    save_misclassified_images(misclassified, save_dir)
+    # save_misclassified_images(misclassified, save_dir)
  
     model.train()
     return accuracy
@@ -356,9 +368,9 @@ transform = transforms.Compose([
 ])
  
 hyperparameters = {
-    'step size': 5,
-    'learning rate': 0.0001,
-    'epochs': 1,
+    'step size': 30,
+    'learning rate': 0.01,
+    'epochs': 100,
     'gamma': 0.9,
     'momentum': 0.9,
     'optimizer': 'Adam',
@@ -366,6 +378,28 @@ hyperparameters = {
     'device': 'cuda',
     'image size': 256,
     'backbone': 'resnet152', # "mobilenet_v3_large" or "resnet152"
+    'torch home': 'TorchvisionModels',
+    'network name': 'Test-0',
+    'beta1': 0.9,
+    'beta2': 0.999,
+    'epsilon': 1e-08,
+    'number of workers': 3,
+    'weight decay': 0.0005,
+    'scheduler': 'Yes',
+    'iou_threshold': 0.5
+}
+
+hyperparameters = {
+    'step size': 1,
+    'learning rate': 0.01,
+    'epochs': 1,
+    'gamma': 0.9,
+    'momentum': 0.9,
+    'optimizer': 'Adam',
+    'number of classes': 1,
+    'device': 'cuda',
+    'image size': 256,
+    'backbone': 'mobilenet_v3_large', # "mobilenet_v3_large" or "resnet152"
     'torch home': 'TorchvisionModels',
     'network name': 'Test-0',
     'beta1': 0.9,
