@@ -17,7 +17,8 @@ import numpy as np
 import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
 from torchvision.ops import nms
- 
+import argparse
+
 from read_XML import read_images_and_xml, read_xml_gt_og
  
 def create_tqdm_bar(iterable, desc):
@@ -60,10 +61,8 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
  
             # Forward pass, backward pass and optimizer step
             predicted_labels = model(images) # .squeeze(1)# [:,1]
-            # predicted_labels = F.softmax(predicted_labels, dim=1).max(1)[1]
-            # print("Shape of predicted labels:", predicted_labels.shape)
- 
-            # print(f"{images[0].cpu().detach().numpy()}")
+
+
             # Forward pass, backward pass and optimizer step
             labels = labels.unsqueeze(dim=1) # [32,1]
             predicted_labels = model(images)#.squeeze(1)# [:,1]
@@ -75,9 +74,8 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
             else:
                 labels = labels.float()
                 predicted_labels = F.sigmoid(predicted_labels)
-                # print(f"outputs: {labels.cpu().detach().numpy()} and targets: {predicted_labels.cpu().detach().numpy()}")
-                # print(f"outputs.shape: {labels.shape} and targets.shape: {predicted_labels.shape}")
-                # print(f"outputs: {labels.cpu().detach().numpy()} and targets: {predicted_labels.cpu().detach().numpy()}")
+
+
             loss_train = loss_function(labels, predicted_labels)
             loss_train.backward()
             optimizer.step()
@@ -171,9 +169,11 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
         )
    
    
+   
+
     # Check accuracy and save model
-    accuracy = check_accuracy(model, dataloader_test, device)
-    save_dir = os.path.join(directory, f'accuracy_{accuracy:.3f}.pth')
+    accuracy, ap = check_accuracy(model, dataloader_test, device)
+    save_dir = os.path.join(directory, f'ap_{ap:.3f}.pth')
     torch.save(model.state_dict(), save_dir)
  
     return accuracy
@@ -243,12 +243,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
             if scores is not None and scores.numel() > 0:
                 mask = (scores > 0.5).int()
-                # print(f"Mask shape: {mask.shape}\n Mask: {mask.cpu().numpy()}")
-            else:
-                # print("Scores tensor is invalid or empty.")
-                continue  # Skip this iteration if mask creation fails
 
-            # mask = (scores > 0.5).int()
 
             mask = mask.squeeze(1)
             coords = coords.squeeze(0)
@@ -273,7 +268,6 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             predictions = (scores.squeeze() > 0.5).int()
             # predictions = labels
 
-            print(f"Predictions: {predictions == labels.squeeze()}")
 
             num_correct += (predictions == labels.squeeze()).sum().item()
             num_samples += len(predictions)
@@ -309,6 +303,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     accuracy = float(num_correct)/float(num_samples)
     print(f"Got {num_correct}/{num_samples} with accuracy {accuracy * 100:.3f}%")
     classes = ('Background', 'Positive') # TODO: CHECK IF THIS IS CORRECT
+
  
     # Create confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
@@ -330,7 +325,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     # save_misclassified_images(misclassified, save_dir)
  
     model.train()
-    return accuracy
+    return accuracy, results
  
 def save_misclassified_images(misclassified, save_dir):
     if not os.path.exists(save_dir):
@@ -356,23 +351,7 @@ def rescale_0_1(image):
  
  
 ################### MAIN CODE ###################
- 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-print(f"Script directory: {script_dir}")
- 
-if torch.cuda.is_available():
-    print("This code will run on GPU.")
-else:
-    print("The code will run on CPU.")
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
- 
-transform = transforms.Compose([
-    transforms.RandomVerticalFlip(p=0.5),
-    transforms.ColorJitter(brightness=0.3, saturation=0.3),
-    transforms.RandomAutocontrast(p=0.5),
-    transforms.RandomAdjustSharpness(2, p=0.5),
-    # Do not include the risezing and ToTensor transforms here
-])
+
  
 hyperparameters = {
     'step size': 30,
@@ -396,63 +375,99 @@ hyperparameters = {
     'iou_threshold': 0.5
 }
 
-hyperparameters = {
-    'step size': 1,
-    'learning rate': 0.01,
-    'epochs': 1,
-    'gamma': 0.9,
-    'momentum': 0.9,
-    'optimizer': 'Adam',
-    'number of classes': 1,
-    'device': 'cuda',
-    'image size': 256,
-    'backbone': 'mobilenet_v3_large', # "mobilenet_v3_large" or "resnet152"
-    'torch home': 'TorchvisionModels',
-    'network name': 'Test-0',
-    'beta1': 0.9,
-    'beta2': 0.999,
-    'epsilon': 1e-08,
-    'number of workers': 3,
-    'weight decay': 0.0005,
-    'scheduler': 'Yes',
-    'iou_threshold': 0.5
-}
+# hyperparameters = {
+#     'step size': 1,
+#     'learning rate': 0.01,
+#     'epochs': 1,
+#     'gamma': 0.9,
+#     'momentum': 0.9,
+#     'optimizer': 'Adam',
+#     'number of classes': 1,
+#     'device': 'cuda',
+#     'image size': 256,
+#     'backbone': 'mobilenet_v3_large', # "mobilenet_v3_large" or "resnet152"
+#     'torch home': 'TorchvisionModels',
+#     'network name': 'Test-0',
+#     'beta1': 0.9,
+#     'beta2': 0.999,
+#     'epsilon': 1e-08,
+#     'number of workers': 3,
+#     'weight decay': 0.0005,
+#     'scheduler': 'Yes',
+#     'iou_threshold': 0.5
+# }
  
-loss_function = torch.nn.BCEWithLogitsLoss()
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--backbone', type=str, default='mobilenet_v3_large', help='The backbone of the model')
+    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
+
+    args = parser.parse_args()
+    hyperparameters['backbone'] = args.backbone
+    hyperparameters['epochs'] = args.epochs
+
+    print(f"Hyperparameters: {hyperparameters}")
+
+     
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    print(f"Script directory: {script_dir}")
+    
+    if torch.cuda.is_available():
+        print("This code will run on GPU.")
+    else:
+        print("The code will run on CPU.")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    transform = transforms.Compose([
+        transforms.RandomVerticalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.3, saturation=0.3),
+        transforms.RandomAutocontrast(p=0.5),
+        transforms.RandomAdjustSharpness(2, p=0.5),
+        # Do not include the risezing and ToTensor transforms here
+    ])
+
+
+    loss_function = torch.nn.BCEWithLogitsLoss()
  
-train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
-print(f"Created a new Dataset for training of length: {len(train_dataset)}")
-val_dataset = CroppedProposalDataset('val', transform=transform, size=hyperparameters['image size'])
-print(f"Created a new Dataset for validation of length: {len(val_dataset)}")
-test_dataset = CroppedProposalDataset('test', transform=None, size=hyperparameters['image size'])
-print(f"Created a new Dataset for testing of length: {len(test_dataset)}")
- 
-models_folder_path = os.path.join(script_dir, 'TorchvisionModels')
-os.environ['TORCH_HOME'] = models_folder_path
-os.makedirs(models_folder_path, exist_ok=True)
-model = MultiModel(backbone=hyperparameters['backbone'], hyperparameters=hyperparameters, load_pretrained=True).to(device)
-# summary(model, (3, hyperparameters['image size'], hyperparameters['image size']))
-# model.count_parameters()
- 
-run_dir = "Results"
-os.makedirs(run_dir, exist_ok=True)
-modeltype = hyperparameters['backbone']
-modeltype_directory = os.path.join(run_dir, f'{modeltype}')
-os.makedirs(modeltype_directory, exist_ok=True)
- 
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for training")
-val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for validation")
-test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
-print("Created a new Dataloader for testing")
- 
-log_dir = os.path.join(modeltype_directory, f'{hyperparameters["network name"]}_{hyperparameters["optimizer"]}_Scheduler_{hyperparameters["scheduler"]}')
-os.makedirs(log_dir, exist_ok=True)
-logger = SummaryWriter(log_dir)
- 
-accuracy = train_net(model, logger, hyperparameters, device,
-                             loss_function, train_loader, val_loader, test_loader, modeltype_directory)
-print(f"Final accuracy: {accuracy}")
- 
- 
+    train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
+    print(f"Created a new Dataset for training of length: {len(train_dataset)}")
+    val_dataset = CroppedProposalDataset('val', transform=transform, size=hyperparameters['image size'])
+    print(f"Created a new Dataset for validation of length: {len(val_dataset)}")
+    test_dataset = CroppedProposalDataset('test', transform=None, size=hyperparameters['image size'])
+    print(f"Created a new Dataset for testing of length: {len(test_dataset)}")
+    
+    models_folder_path = os.path.join(script_dir, 'TorchvisionModels')
+    os.environ['TORCH_HOME'] = models_folder_path
+    os.makedirs(models_folder_path, exist_ok=True)
+
+
+
+    model = MultiModel(backbone=hyperparameters['backbone'], hyperparameters=hyperparameters, load_pretrained=True).to(device)
+    # summary(model, (3, hyperparameters['image size'], hyperparameters['image size']))
+    # model.count_parameters()
+    
+    run_dir = "Results"
+    os.makedirs(run_dir, exist_ok=True)
+    modeltype = hyperparameters['backbone']
+    epochs = hyperparameters['epochs']
+    modeltype_directory = os.path.join(run_dir, f'{modeltype}_{epochs}')
+    os.makedirs(modeltype_directory, exist_ok=True)
+    
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+    print("Created a new Dataloader for training")
+    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+    print("Created a new Dataloader for validation")
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False) # !! Do not shuffle here and do not change batch_size !!
+    print("Created a new Dataloader for testing")
+    
+    log_dir = os.path.join(modeltype_directory, f'{hyperparameters["network name"]}_{hyperparameters["optimizer"]}_Scheduler_{hyperparameters["scheduler"]}')
+    os.makedirs(log_dir, exist_ok=True)
+    logger = SummaryWriter(log_dir)
+    
+    accuracy = train_net(model, logger, hyperparameters, device,
+                                loss_function, train_loader, val_loader, test_loader, modeltype_directory)
+    print(f"Final accuracy: {accuracy}")
+    
+    
