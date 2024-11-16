@@ -120,10 +120,19 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
                 labels = labels.to(device)
  
                 # Forward pass
-                output = model(images).squeeze(1)
+                output = model(images)#.squeeze(1)
+                labels = labels.unsqueeze(dim=1)
+
+                if labels.shape != (32, 1) or output.shape != (32, 1):
+                    print(f"Breaking loop because one of the tensors has an incorrect shape. "
+                    f"labels shape: {labels.shape}, output shape: {output.shape}")
+                    break  # Exit the loop if shapes are not as expected
+                else:
+                    labels = labels.float()
+                    output = F.sigmoid(output)
                 # TODO:
                 # Calculate the loss
-                loss_val = loss_function(labels.float(), output)
+                loss_val = loss_function(labels, output)
  
                 validation_loss += loss_val.item()
                 val_losses.append(loss_val.item())
@@ -212,12 +221,36 @@ def check_accuracy(model, dataloader, device, save_dir=None):
  
             images = images.to(device)
             labels = labels.to(device)
+            coords = coords.to(device)
  
             # TODO: IMPLEMENT HERE THE TEST TIME PROCEDURE
  
-            scores = model(images).squeeze()  
-            prob = F.softmax(scores, dim=1)
-            mask = (prob > 0.5).int()
+            scores = model(images)#.squeeze()  
+            labels = labels.unsqueeze(dim=1)
+
+            if labels.shape != (24, 1) or scores.shape != (24, 1):
+                    print(f"Breaking loop because one of the tensors has an incorrect shape. "
+                    f"labels shape: {labels.shape}, scores shape: {scores.shape}")
+                    break  # Exit the loop if shapes are not as expected
+            else:
+                labels = labels.float()
+                scores = F.sigmoid(scores)
+
+            # mask = (scores > 0.5).int()
+
+            # Check shape of scores
+            print(f"Scores shape: {scores.shape}\n scores: {scores.cpu().numpy()}")
+            print(f"Coords shape: {coords.shape}\n Coords: {coords.cpu().numpy()}")
+
+
+            if scores is not None and scores.numel() > 0:
+                mask = (scores > 0.5).int()
+                print(f"Mask shape: {mask.shape}\n Mask: {mask.cpu().numpy()}")
+            else:
+                print("Scores tensor is invalid or empty.")
+                continue  # Skip this iteration if mask creation fails
+
+            # mask = (scores > 0.5).int()
  
             selected_coords = coords[mask == 1]
             # scores = F.softmax(scores, dim=1)
