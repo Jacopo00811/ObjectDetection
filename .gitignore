@@ -170,5 +170,9 @@ results/
 .ipynb
 TorchvisionModels/
 
+<<<<<<< Updated upstream
 Results/
 *.bat
+=======
+Results/
+>>>>>>> Stashed changes
