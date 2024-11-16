@@ -27,11 +27,7 @@ def read_xml_gt(xml_dir):
         }
         annotations.append(annotation)
 
-    coords = [[]]
-    for annotation in annotations:
-        coords.append([annotation['bndbox']['xmin'], annotation['bndbox']['ymin'], annotation['bndbox']['xmax'], annotation['bndbox']['ymax']])
-    
-    return torch.tensor(coords)
+    # return 0 
 
 def read_xml_gt_og(xml_dir):
     tree = ET.parse(xml_dir)

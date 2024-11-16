@@ -207,13 +207,16 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     misclassified = []
     all_predictions = []
     all_ground_truths = []
- 
+    
+
     with torch.no_grad():
         for data in dataloader:
             # coords(xmin, ymin, xmax, ymax, SS_label, index)
             images, labels, xml_dir, coords = data
             images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
             labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
+            # convert labels to int
+            labels = labels.int()
             xml_dir = xml_dir[0]  # Remove the tuple
 
             ground_truth_boxes = read_xml_gt_og(xml_dir)
@@ -221,7 +224,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
 
 
-            all_ground_truths.extend(ground_truth_boxes)
+            # all_ground_truths.extend(ground_truth_boxes)
 
  
             images = images.to(device)
@@ -237,11 +240,6 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             labels = labels.float()
             scores = F.sigmoid(scores)  
             
-
-            # mask = (scores > 0.5).int()
-
-
-
 
             if scores is not None and scores.numel() > 0:
                 mask = (scores > 0.5).int()
@@ -268,14 +266,17 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
             keep = nms(boxes, pos_scores.squeeze(), iou_threshold=hyperparameters['iou_threshold'])
             all_predictions.extend(pos_scores[keep].cpu().numpy())
-
+            all_ground_truths.extend(labels[keep].cpu().numpy())
 
             # Calculating validation metric stuff ...
 
             predictions = (scores.squeeze() > 0.5).int()
+            # predictions = labels
 
-            num_correct += (predictions == labels).sum().item()
-            num_samples += predictions.size(0)
+            print(f"Predictions: {predictions == labels.squeeze()}")
+
+            num_correct += (predictions == labels.squeeze()).sum().item()
+            num_samples += len(predictions)
            
             # Save predictions and labels
             y_pred.extend(predictions.cpu().tolist())
@@ -292,11 +293,17 @@ def check_accuracy(model, dataloader, device, save_dir=None):
                 # Append only misclassified examples
             #    misclassified.extend(
             #        zip(misclassified_images, misclassified_labels, misclassified_predictions))
-               
+
+
+
     avg_precision = AveragePrecision(task='binary')
 
-    print(f"Ground truths: {all_ground_truths}")
-    avg_precision.update(torch.tensor(all_predictions), torch.tensor(all_ground_truths))
+
+    # cast all_ground_truths to int tensor
+
+    all_predictions = torch.tensor(np.array(all_predictions).flatten()).float()
+    all_ground_truths = torch.tensor(np.array(all_ground_truths).flatten()).int()
+    avg_precision.update(torch.tensor(all_predictions), all_ground_truths)
     results = avg_precision.compute()
     print(f"Average Precision: {results}")
     accuracy = float(num_correct)/float(num_samples)
