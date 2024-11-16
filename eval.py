@@ -14,11 +14,15 @@ import pandas as pd
 import numpy as np
 import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
+from torchvision.ops import nms, box_iou
+from sklearn.metrics import average_precision_score
+from read_XML import read_images_and_xml
+from evaluate_proposal import convert_to_xyxy
 
 def create_tqdm_bar(iterable, desc):
     return tqdm(enumerate(iterable), total=len(iterable), ncols=150, desc=desc)
 
-def train_net(model, logger, hyper_parameters, device, loss_function, dataloader_train, dataloader_validation, dataloader_test, directory):
+# def train_net(model, logger, hyper_parameters, device, loss_function, dataloader_train, dataloader_validation, dataloader_test, directory):
     optimizer, scheduler = set_optimizer_and_scheduler(hyper_parameters, model)
 
     epochs = hyper_parameters["epochs"]
@@ -141,6 +145,79 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
     torch.save(model.state_dict(), save_dir)
 
     return accuracy
+
+def eval_net(model, logger, hyper_parameters, device, loss_function, dataloader_test, directory):
+    optimizer, scheduler = set_optimizer_and_scheduler(hyper_parameters, model)
+
+    epochs = hyper_parameters["epochs"]
+    all_eval_losses = []
+    all_accuracies = []
+    validation_loss = 0
+
+    images, labels = [], []
+
+    for epoch in range(epochs):  # loop over the dataset multiple times
+
+        """    Test step for one batch of data    """
+        eval_loop = create_tqdm_bar(
+            dataloader_test, desc=f'Test Epoch [{epoch+1}/{epochs}]')
+
+        test_loss = 0
+        model.eval()  # Set the model to evaluation mode
+        test_losses = []
+        accuracies = []
+        gt_scores = []
+
+        for test_iteration, batch in eval_loop:
+            images, labels, xml_dir = batch
+            images = images.squeeze(0)  # Remove the batch dimension when batch_size is 1
+            labels = labels.squeeze(0)  # Remove the batch dimension when batch_size is 1
+            xml_dir = xml_dir[0]  # Remove the tuple
+
+            labels = labels.to(device)
+            images = images.to(device)
+
+            # Forward pass
+            predicted_labels = model(images)
+
+            # Read ground truth boxes from XML
+            _, ground_truth_boxes = read_images_and_xml(xml_dir)
+
+            for i in range(len(ground_truth_boxes)):
+                ground_truth_boxes[i] = torch.tensor(ground_truth_boxes[i], dtype=torch.float32).to(device)
+
+                # Convert to (x_min, y_min, x_max, y_max)
+                ground_truth_boxes[i] = convert_to_xyxy(ground_truth_boxes[i].unsqueeze(0))
+
+                # where do we save the coords for the predicted boxes?
+                gt_scores[i] = box_iou(ground_truth_boxes[i], predicted_labels[i])
+
+            # Apply NMS
+            keep = nms(predicted_labels, gt_scores, hyper_parameters["iou_threshold"])
+            predicted_labels = predicted_labels[keep]
+
+            # Calculate loss
+            loss_test = loss_function(labels, predicted_labels)
+            test_loss += loss_test.item()
+            test_losses.append(loss_test.item())
+
+            # Calculate accuracy
+            _, predicted = predicted_labels.max(1)
+            num_correct = (predicted == labels).sum()
+            test_accuracy = float(num_correct) / float(images.shape[0])
+            accuracies.append(test_accuracy)
+
+            eval_loop.set_postfix(test_loss="{:.8f}".format(
+                test_loss / (test_iteration + 1)), val_loss="{:.8f}".format(validation_loss))
+
+            logger.add_scalar(f'Test loss', loss_test.item(
+            ), epoch * len(dataloader_test) + test_iteration)
+            logger.add_scalar(f'Test accuracy', test_accuracy, epoch * len(dataloader_test) + test_iteration)
+
+        all_eval_losses.append(sum(test_losses) / len(test_losses))
+        all_accuracies.append(sum(accuracies) / len(accuracies))
+
+    return all_eval_losses, all_accuracies
 
 def set_optimizer_and_scheduler(new_hp, model):
     if new_hp["optimizer"] == "Adam":
@@ -289,7 +366,8 @@ hyperparameters = {
     'epsilon': 1e-08, 
     'number of workers': 3, 
     'weight decay': 0.0005, 
-    'scheduler': 'Yes'
+    'scheduler': 'Yes',
+    'iou_threshold': 0.6,
 }
 
 loss_function = torch.nn.BCELoss()
@@ -325,7 +403,7 @@ log_dir = os.path.join(modeltype_directory, f'{hyperparameters["network name"]}_
 os.makedirs(log_dir, exist_ok=True)
 logger = SummaryWriter(log_dir)
 
-accuracy = train_net(model, logger, hyperparameters, device,
+accuracy = eval_net(model, logger, hyperparameters, device,
                              loss_function, train_loader, val_loader, test_loader, modeltype_directory)
 print(f"Final accuracy: {accuracy}")
 

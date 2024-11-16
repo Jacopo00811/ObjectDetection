@@ -22,7 +22,6 @@ class CroppedProposalDataset(Dataset):
         else:
             raise ValueError("\nInvalid mode. Please choose 'train', 'val', or 'test'\n")
 
-
         self.img_dirs = [os.path.join(self.dir, f) 
                             for f in os.listdir(self.dir) if os.path.isdir(os.path.join(self.dir, f))] # Collects the list of image directories 
         self.list_of_images = [] 
@@ -65,7 +64,6 @@ class CroppedProposalDataset(Dataset):
             transforms.Resize((self.size, self.size)),
             transforms.ToImage(),
             transforms.ToDtype(torch.float32, scale=True)])
-
     def upsample_if_needed(self, transform, pos_images, neg_images):
         upsampled_pos_images = []
         if len(pos_images) == 0:
