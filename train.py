@@ -427,10 +427,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--backbone', type=str, default='resnet152', help='The backbone of the model')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
+    parser.add_argument('--learning_rate', type=float, default=.0001, help='Learning rate')
 
     args = parser.parse_args()
     hyperparameters['backbone'] = args.backbone
     hyperparameters['epochs'] = args.epochs
+    hyperparameters['learning rate'] = args.learning_rate
 
     print(f"Hyperparameters: {hyperparameters}")
 
