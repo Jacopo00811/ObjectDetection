@@ -91,6 +91,7 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
 
             # loss_train = loss_function(labels, (predicted_labels))
             loss_train = loss_function(predicted_labels, labels)
+            
 
             # loss_train = loss_function(labels, small_values_tensor)
 
@@ -149,10 +150,11 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
                     break  # Exit the loop if shapes are not as expected
                 else:
                     labels = labels.float()
-                    output = F.sigmoid(output)
+                    # output = F.sigmoid(output)
                 # TODO:
                 # Calculate the loss
                 loss_val = loss_function(labels, output)
+                # loss_val = loss_function(output, labels)
  
                 validation_loss += loss_val.item()
                 val_losses.append(loss_val.item())
