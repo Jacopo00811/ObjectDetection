@@ -495,10 +495,8 @@ hyperparameters = {
 
 hyperparameter_grid = {
     'step size' : [10, 20, 30],
-    'learning rate' : [1e-2, 5e-3, 1e-3, 1e-4],
-    'gamma' : [0.7, 0.8, 0.9, 0.95],
-    'weight decay' : [1e-5, 1e-4, 1e-3, 1e-2]
-
+    'learning rate' : [1e-2, 1e-3, 1e-4],
+    'gamma' : [0.8, 0.9, 0.95]
 }
  
 
