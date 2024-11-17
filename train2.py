@@ -223,7 +223,7 @@ def set_optimizer_and_scheduler(new_hp, model):
         scheduler = None
     return optimizer, scheduler
  
-def check_accuracy(model, dataloader, device, save_dir=None):
+def check_accuracy(model, dataloader, device, save_dir=None, hyperparameters=None):
     model.eval()
     num_correct = 0
     num_samples = 0
@@ -429,8 +429,12 @@ def check_accuracy(model, dataloader, device, save_dir=None):
         plt.tight_layout()
 
         # Save the image if needed
-        plt.savefig("Results/image_{}_res.png".format(i+1))
-        plt.close()
+        if hyperparameters:
+            plt.savefig(f"Results/{hyperparameters['backbone']}_{i+1}_res.png")
+            plt.close()
+        else:
+            plt.savefig(f"Results/results_{i+1}_res.png")
+            plt.close()
 
 
 
