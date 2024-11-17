@@ -321,7 +321,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
                 all_ground_truths.extend(labels[keep].cpu().numpy())
 
             if len(plots) < 6:
-                plots[xml_dir] = (xml_dir, labels[keep], pos_scores[keep], keep)
+                plots[xml_dir] = (xml_dir, labels[keep], pos_scores[keep], keep, boxes[keep])
 
             # Calculating validation metric stuff ...
 
@@ -374,7 +374,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     classes = ('Background', 'Positive') # TODO: CHECK IF THIS IS CORRECT
 
     # Plot 5 images with thier predicted lables and scores and thir ground truth labels
-    for i, (xml_dir, labels, scores, keep) in enumerate(plots.values()):
+    for i, (xml_dir, labels, scores, keep, predictions) in enumerate(plots.values()):
         # Read the image using OpenCV or any other preferred library
         image_dir = xml_dir.replace(".xml", ".jpg")
         print(f"Image dir: {image_dir}")
@@ -385,6 +385,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
         labels = labels.cpu().numpy()
         scores = scores.cpu().numpy()
         keep = keep.cpu().numpy()
+        predictions = predictions.cpu().numpy()
 
         # Plot the image
         plt.figure(figsize=(10, 7))
@@ -415,7 +416,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             )
 
         # Plot predicted boxes and scores
-        for j, box in enumerate(keep):
+        for j, box in enumerate(predictions):
             xmin, ymin, xmax, ymax = box
             plt.gca().add_patch(
                 plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
