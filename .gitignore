@@ -1,4 +1,3 @@
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -172,7 +171,3 @@ results/
 TorchvisionModels/
 
 Results/
-*.bat
-
-*.err
-*.out

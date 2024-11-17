@@ -19,15 +19,7 @@ from sklearn.metrics import confusion_matrix
 from torchvision.ops import nms
 import argparse
 
-import argparse
-
 from read_XML import read_images_and_xml, read_xml_gt_og
- 
- # Empty memory before start
-if torch.cuda.is_available():
-    torch.cuda.empty_cache()
-
-
  
  # Empty memory before start
 if torch.cuda.is_available():
@@ -86,11 +78,23 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
                 break  # Exit the loop if shapes are not as expected
             else:
                 labels = labels.float()
+                # print(f"Logits: {torch.logit(predicted_labels)} and shape: {torch.logit(predicted_labels).shape}")
+                # print(f"Logits: {(predicted_labels)}")
+
                 # predicted_labels = F.sigmoid(predicted_labels)
-                predicted_labels = predicted_labels
+            
+            # small_values_tensor = torch.randn(32, 1, requires_grad=True) * 1e-7  # Even smaller values
+            # small_values_tensor = small_values_tensor.to(device)
+            # print(f"Small values: {small_values_tensor}")
 
 
-            loss_train = loss_function(labels, predicted_labels)
+
+            # loss_train = loss_function(labels, (predicted_labels))
+            loss_train = loss_function(predicted_labels, labels)
+
+            # loss_train = loss_function(labels, small_values_tensor)
+
+            # print(f"Loss train 1: {loss_train}")
             loss_train.backward()
             # print(f"Loss train 2: {loss_train}")
             optimizer.step()
@@ -370,12 +374,11 @@ def rescale_0_1(image):
  
 ################### MAIN CODE ###################
 
-
  
 hyperparameters = {
     'step size': 30,
-    'learning rate': 0.01,
-    'epochs': 1,
+    'learning rate': 0.0001,
+    'epochs': 100,
     'gamma': 0.9,
     'momentum': 0.9,
     'optimizer': 'Adam',
@@ -448,9 +451,8 @@ if __name__ == "__main__":
     ])
 
 
-    # loss_function = torch.nn.BCEWithLogitsLoss()
-    loss_function = torch.nn.BCELoss()
- 
+    loss_function = torch.nn.BCEWithLogitsLoss()
+
     train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
     print(f"Created a new Dataset for training of length: {len(train_dataset)}")
     val_dataset = CroppedProposalDataset('val', transform=transform, size=hyperparameters['image size'])
