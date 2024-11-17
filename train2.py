@@ -197,7 +197,7 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
    
 
     # Check accuracy and save model
-    accuracy, ap = check_accuracy(model, dataloader_test, device)
+    accuracy, ap = check_accuracy(model, dataloader_test, device, hyperparameters=hyper_parameters)
     save_dir = os.path.join(directory, f'ap_{ap:.3f}.pth')
     torch.save(model.state_dict(), save_dir)
  
@@ -308,7 +308,7 @@ def check_accuracy(model, dataloader, device, save_dir=None, hyperparameters=Non
                 all_predictions.extend(pos_scores[keep].cpu().numpy())
                 all_ground_truths.extend(labels[keep].cpu().numpy())
             else:
-                print("No valid boxes or scores, skipping this batch.")
+                # print("No valid boxes or scores, skipping this batch.")
                 continue
 
             
@@ -377,7 +377,7 @@ def check_accuracy(model, dataloader, device, save_dir=None, hyperparameters=Non
     for i, (xml_dir, labels, scores, keep, predictions) in enumerate(plots.values()):
         # Read the image using OpenCV or any other preferred library
         image_dir = xml_dir.replace(".xml", ".jpg")
-        print(f"Image dir: {image_dir}")
+        # print(f"Image dir: {image_dir}")
         image = cv2.imread(image_dir)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB for matplotlib
         
@@ -397,8 +397,8 @@ def check_accuracy(model, dataloader, device, save_dir=None, hyperparameters=Non
         if gt_boxes.numel() == 0:
             print(f"No ground truth boxes for {xml_dir}, skipping.")
             continue
-        print(f"Ground truth boxes: {gt_boxes}")
-        print(f"Type of gt_boxes: {type(gt_boxes)}")  # Add this line to debug
+        # print(f"Ground truth boxes: {gt_boxes}")
+        # print(f"Type of gt_boxes: {type(gt_boxes)}")  # Add this line to debug
 
         # Convert to tensor if it's not already one
         if not isinstance(gt_boxes, torch.Tensor):
