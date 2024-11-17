@@ -173,3 +173,7 @@ TorchvisionModels/
 Results/
 *.bat
 Plots/
+*.out
+*.err
+HPResults/
+*.sh

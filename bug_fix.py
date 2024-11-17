@@ -128,7 +128,44 @@ def assert_proposal_length(folder_path):
                 f.write(f"{folder_name}\n")
         
 
+def fix_again(folder_path):
+    # Get the list of folders in the folder
+    dirs = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))]
 
+    # Loop through the directories
+    for dir in tqdm(dirs, desc='Processing folders'):
+        # get the name of the folder
+        folder_name = os.path.basename(dir)
+
+        # Parse the image folder background dir
+        img_folder = os.path.join(folder_path, dir, 'background')
+        # Get the list of images in the folder
+        imgs = [f for f in os.listdir(img_folder) if os.path.isfile(os.path.join(img_folder, f))]
+        # Loop through the images
+        for img in imgs:
+            # Get the image name
+            img_name = os.path.basename(img)
+            # Get the proposal number
+            proposal_number = img_name.split('_')[1]
+            # Replace the proposal name
+            new_img_name = folder_name + '_' + proposal_number
+            # Rename the image
+            os.rename(os.path.join(img_folder, img), os.path.join(img_folder, new_img_name))
+        
+        # Dothe same for the positive images
+        img_folder = os.path.join(folder_path, dir, 'positive')
+        # Get the list of images in the folder
+        imgs = [f for f in os.listdir(img_folder) if os.path.isfile(os.path.join(img_folder, f))]
+        # Loop through the images
+        for img in imgs:
+            # Get the image name
+            img_name = os.path.basename(img)
+            # Get the proposal number
+            proposal_number = img_name.split('_')[1]
+            # Replace the proposal name
+            new_img_name = folder_name + '_' + proposal_number
+            # Rename the image
+            os.rename(os.path.join(img_folder, img), os.path.join(img_folder, new_img_name))
 
     
 if __name__ == "__main__":
