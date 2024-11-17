@@ -177,3 +177,4 @@ Plots/
 *.err
 HPResults/
 *.sh
+notify.py
