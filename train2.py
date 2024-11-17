@@ -429,7 +429,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
         plt.tight_layout()
 
         # Save the image if needed
-        plt.savefig("image_{}_res.png".format(i+1))
+        plt.savefig("Results/image_{}_res.png".format(i+1))
         plt.close()
 
 
