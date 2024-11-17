@@ -171,3 +171,5 @@ results/
 TorchvisionModels/
 
 Results/
+*.bat
+Plots/

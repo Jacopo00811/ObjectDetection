@@ -18,6 +18,7 @@ import torchvision.transforms.functional as TF
 from sklearn.metrics import confusion_matrix
 from torchvision.ops import nms
 import argparse
+import cv2
 
 from read_XML import read_images_and_xml, read_xml_gt_og
  
@@ -196,7 +197,7 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
    
 
     # Check accuracy and save model
-    accuracy, ap = check_accuracy(model, dataloader_test, device)
+    accuracy, ap = check_accuracy(model, dataloader_test, device, hyperparameters=hyper_parameters)
     save_dir = os.path.join(directory, f'ap_{ap:.3f}.pth')
     torch.save(model.state_dict(), save_dir)
  
@@ -222,7 +223,7 @@ def set_optimizer_and_scheduler(new_hp, model):
         scheduler = None
     return optimizer, scheduler
  
-def check_accuracy(model, dataloader, device, save_dir=None):
+def check_accuracy(model, dataloader, device, save_dir=None, hyperparameters=None):
     model.eval()
     num_correct = 0
     num_samples = 0
@@ -231,7 +232,7 @@ def check_accuracy(model, dataloader, device, save_dir=None):
     misclassified = []
     all_predictions = []
     all_ground_truths = []
-    
+    plots = {}
 
     with torch.no_grad():
         for data in dataloader:
@@ -244,7 +245,6 @@ def check_accuracy(model, dataloader, device, save_dir=None):
             xml_dir = xml_dir[0]  # Remove the tuple
 
             ground_truth_boxes = read_xml_gt_og(xml_dir)
-
 
 
 
@@ -279,13 +279,49 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
             # Apply NMS:
            
-            boxes = selected_coords[:, :4].to(device).squeeze().float()
+            boxes = selected_coords[:, :4].to(device).float()
 
+            # # Ensure boxes and pos_scores are 2D tensors
+            # if boxes.dim() == 3:
+            #     boxes = boxes.squeeze()
+            # elif boxes.dim() == 1:
+            #     boxes = boxes.unsqueeze()
 
+            # if pos_scores.dim() == 2:
+            #     pos_scores = pos_scores.squeeze()
+            #     keep = nms(boxes, pos_scores, iou_threshold=hyperparameters['iou_threshold'])
+            # elif pos_scores.dim() == 1:
+            #     keep = nms(boxes, pos_scores, iou_threshold=hyperparameters['iou_threshold'])
+            # elif pos_scores.dim() == 0:
+            #     continue # Skip if no scores are selected as positive
+            # Apply NMS
+            if boxes.numel() > 0 and pos_scores.numel() > 0:
+                boxes = boxes.view(-1, 4)  # Ensure boxes shape is [N, 4]
+                pos_scores = pos_scores.view(-1)  # Ensure pos_scores shape is [N]
+                
+                keep = nms(boxes, pos_scores, iou_threshold=hyperparameters['iou_threshold'])
+                
+                if len(keep) == 0:
+                    print("No boxes selected by NMS, skipping.")
+                    continue
 
-            keep = nms(boxes, pos_scores.squeeze(), iou_threshold=hyperparameters['iou_threshold'])
-            all_predictions.extend(pos_scores[keep].cpu().numpy())
-            all_ground_truths.extend(labels[keep].cpu().numpy())
+                all_predictions.extend(pos_scores[keep].cpu().numpy())
+                all_ground_truths.extend(labels[keep].cpu().numpy())
+            else:
+                # print("No valid boxes or scores, skipping this batch.")
+                continue
+
+            
+
+            if pos_scores[keep].dim() == 0:
+                # skip if no boxes are selected and continue to the next image
+                continue
+            else:
+                all_predictions.extend(pos_scores[keep].cpu().numpy())
+                all_ground_truths.extend(labels[keep].cpu().numpy())
+
+            if len(plots) < 6:
+                plots[xml_dir] = (xml_dir, labels[keep], pos_scores[keep], keep, boxes[keep])
 
             # Calculating validation metric stuff ...
 
@@ -321,14 +357,88 @@ def check_accuracy(model, dataloader, device, save_dir=None):
 
     all_predictions = torch.tensor(np.array(all_predictions).flatten()).float()
     all_ground_truths = torch.tensor(np.array(all_ground_truths).flatten()).int()
-    avg_precision.update(torch.tensor(all_predictions), all_ground_truths)
-    results = avg_precision.compute()
+    if len(all_predictions) > 0 and len(all_ground_truths) > 0:
+        # avg_precision.update(torch.tensor(all_predictions), all_ground_truths)
+        avg_precision.update(all_predictions.clone().detach(), all_ground_truths.clone().detach())
+
+        results = avg_precision.compute()
+    else:
+        print("No valid predictions or ground truths for this batch.")
+        results = 0.0
+
+    # avg_precision.update(torch.tensor(all_predictions), all_ground_truths)
+    # results = avg_precision.compute()
     print(f"Average Precision: {results}")
     accuracy = float(num_correct)/float(num_samples)
     print(f"Got {num_correct}/{num_samples} with accuracy {accuracy * 100:.3f}%")
     classes = ('Background', 'Positive') # TODO: CHECK IF THIS IS CORRECT
 
- 
+    # Plot 5 images with thier predicted lables and scores and thir ground truth labels
+    for i, (xml_dir, labels, scores, keep, predictions) in enumerate(plots.values()):
+        # Read the image using OpenCV or any other preferred library
+        image_dir = xml_dir.replace(".xml", ".jpg")
+        # print(f"Image dir: {image_dir}")
+        image = cv2.imread(image_dir)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB for matplotlib
+        
+        # Normalize labels and scores to appropriate formats
+        labels = labels.cpu().numpy()
+        scores = scores.cpu().numpy()
+        keep = keep.cpu().numpy()
+        predictions = predictions.cpu().numpy()
+
+        # Plot the image
+        plt.figure(figsize=(10, 7))
+        plt.imshow(image)
+        plt.axis('off')
+
+        # Plot ground truth boxes
+        gt_boxes = read_xml_gt_og(xml_dir)
+        if gt_boxes.numel() == 0:
+            print(f"No ground truth boxes for {xml_dir}, skipping.")
+            continue
+        # print(f"Ground truth boxes: {gt_boxes}")
+        # print(f"Type of gt_boxes: {type(gt_boxes)}")  # Add this line to debug
+
+        # Convert to tensor if it's not already one
+        if not isinstance(gt_boxes, torch.Tensor):
+            gt_boxes = torch.tensor(gt_boxes)
+
+        # Now reshape if it's 1D
+        if len(gt_boxes.shape) == 1:
+            gt_boxes = gt_boxes.reshape(1, -1)
+
+        for row in range(len(gt_boxes)):
+            xmin, ymin, xmax, ymax = gt_boxes[row].tolist()
+            plt.gca().add_patch(
+                plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                            edgecolor='green', facecolor='none', linewidth=2, label='Ground Truth')
+            )
+
+        # Plot predicted boxes and scores
+        for j, box in enumerate(predictions):
+            xmin, ymin, xmax, ymax = box
+            plt.gca().add_patch(
+                plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                            edgecolor='red', facecolor='none', linewidth=2, label=f'Prediction {scores[j]:.2f}')
+            )
+
+        # Add title and legend
+        plt.title(f"Image {i+1}: Predictions vs. Ground Truth", fontsize=16)
+        plt.legend(loc="upper right", fontsize=10)
+        plt.tight_layout()
+
+        # Save the image if needed
+        if hyperparameters:
+            plt.savefig(f"Results/{hyperparameters['backbone']}_{i+1}_res.png")
+            plt.close()
+        else:
+            plt.savefig(f"Results/results_{i+1}_res.png")
+            plt.close()
+
+
+
+
     # Create confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
     df_cm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None], index=[i for i in classes],
