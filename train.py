@@ -79,12 +79,12 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
             else:
                 labels = labels.float()
                 # print(f"Logits: {torch.logit(predicted_labels)} and shape: {torch.logit(predicted_labels).shape}")
-                print(f"Logits: {(predicted_labels)}")
+                # print(f"Logits: {(predicted_labels)}")
 
                 # predicted_labels = F.sigmoid(predicted_labels)
             
-            small_values_tensor = torch.randn(32, 1, requires_grad=True) * 1e-7  # Even smaller values
-            small_values_tensor = small_values_tensor.to(device)
+            # small_values_tensor = torch.randn(32, 1, requires_grad=True) * 1e-7  # Even smaller values
+            # small_values_tensor = small_values_tensor.to(device)
             # print(f"Small values: {small_values_tensor}")
 
 
@@ -94,15 +94,15 @@ def train_net(model, logger, hyper_parameters, device, loss_function, dataloader
 
             # loss_train = loss_function(labels, small_values_tensor)
 
-            print(f"Loss train 1: {loss_train}")
+            # print(f"Loss train 1: {loss_train}")
             loss_train.backward()
-            print(f"Loss train 2: {loss_train}")
+            # print(f"Loss train 2: {loss_train}")
             optimizer.step()
             # Accumulate the loss and calculate the accuracy of predictions
-            print(f"Loss train item: {loss_train.item()}")
+            # print(f"Loss train item: {loss_train.item()}")
 
             training_loss += loss_train.item()
-            print(f"training_loss: {training_loss}")
+            # print(f"training_loss: {training_loss}")
             train_losses.append(loss_train.item())
  
             # Running train accuracy
@@ -452,7 +452,7 @@ if __name__ == "__main__":
 
 
     loss_function = torch.nn.BCEWithLogitsLoss()
-     
+
     train_dataset = CroppedProposalDataset('train', transform=transform, size=hyperparameters['image size'])
     print(f"Created a new Dataset for training of length: {len(train_dataset)}")
     val_dataset = CroppedProposalDataset('val', transform=transform, size=hyperparameters['image size'])
